@@ -2,14 +2,14 @@
 
 /** @var \Illuminate\Database\Eloquent\Factory $factory */
 
-use App\Project;
 use App\Team;
+use App\TeamMembership;
+use App\User;
 use Faker\Generator as Faker;
 
-$factory->define(Project::class, function (Faker $faker) {
+$factory->define(TeamMembership::class, function (Faker $faker) {
     return [
-        'name' => $faker->name,
-        'deploy_endpoint' => $faker->unique()->md5,
+        'user_id' => factory(User::class),
         'team_id' => factory(Team::class)
     ];
 });

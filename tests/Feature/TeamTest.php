@@ -23,10 +23,8 @@ class TeamTest extends TestCase
         $team->addMember($user);
 
         $this->assertCount(1, $team->members);
-        $this->assertDatabaseHas('team_memberships', [
-            'user_id' => $user->id,
-            'team_id' => $team->id,
-        ]);
+
+        $this->assertCount(2, $user->teams);
     }
 
     /** @test */
@@ -90,5 +88,14 @@ class TeamTest extends TestCase
 
         $this->assertCount(1, $team->projects);
         $this->assertEquals($project->id, $team->projects()->first()->id);
+    }
+
+    /** @test */
+    public function a_team_is_created_when_a_user_is_created()
+    {
+        $user = factory(User::class)->create();
+
+        $this->assertCount(1, $user->teams);
+        $this->assertEquals($user->name, $user->teams()->first()->name);
     }
 }

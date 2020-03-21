@@ -20,7 +20,9 @@ class Project extends Model
     protected static function booted()
     {
         static::creating(function (Project $project) {
-            $project->deploy_endpoint = Str::uuid()->toString();
+            if ( ! $project->deploy_endpoint) {
+                $project->deploy_endpoint = Str::uuid()->toString();
+            }
         });
     }
 }

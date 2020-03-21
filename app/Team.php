@@ -6,11 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Team extends Model
 {
-    public function members()
-    {
-        return $this->belongsToMany(User::class, 'team_memberships')->withTimestamps();
-    }
-
     public function addMember(User $user)
     {
         return TeamMembership::create([
@@ -25,6 +20,11 @@ class Team extends Model
             'user_id' => $user->id,
             'team_id' => $this->id
         ])->delete();
+    }
+
+    public function members()
+    {
+        return $this->belongsToMany(User::class, 'team_memberships')->withTimestamps();
     }
 
     public function projects()
