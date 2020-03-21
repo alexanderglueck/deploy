@@ -14,7 +14,7 @@ class DeploymentController extends Controller
             'event' => 'required',
             'ref' => 'required',
             'repo' => 'required'
-        ], $request);
+        ]);
 
         return PendingDeployment::create([
             'project_id' => $project->id,
