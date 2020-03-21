@@ -10,3 +10,13 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+
+# Custom
+/storage/tmp/db/*
+.phpstorm.meta.php
+_ide_helper.php
+
+# generated files
+/public/css/app.css
+/public/js/app.js
+/public/mix-manifest.json
