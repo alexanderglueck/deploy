@@ -19,7 +19,7 @@
                                 <li>{{ $team->name }}
                                     <ul>
                                         @foreach ($team->projects as $project)
-                                            <li>{{ $project->name }}</li>
+                                            <li>{{ $project->name }} ({{ route('api.deployment.store', $project->deploy_endpoint) }})</li>
                                         @endforeach
                                     </ul>
                                 </li>
