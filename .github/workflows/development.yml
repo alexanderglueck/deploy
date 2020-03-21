@@ -37,4 +37,6 @@ jobs:
 
       - name: Deploy
         run: |
-          [[ ! -z "${{ secrets.DEPLOY_HOOK }}" ]] && curl "${{ secrets.DEPLOY_HOOK }}?event=${{ github.event_name }}&ref=${{ github.ref }}&repo=${{ github.repository }}"
+          if [ "${{ secrets.DEPLOY_HOOK }}" != "" ]; then
+            curl "${{ secrets.DEPLOY_HOOK }}?event=${{ github.event_name }}&ref=${{ github.ref }}&repo=${{ github.repository }}"
+          fi
