@@ -36,4 +36,20 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_memberships')->withTimestamps();
+    }
+
+    protected static function booted()
+    {
+        static::created(function (User $user) {
+            $team = new Team();
+            $team->name = $user->name;
+            $team->save();
+
+            $team->addMember($user);
+        });
+    }
 }

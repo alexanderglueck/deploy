@@ -58,7 +58,7 @@ class AuthenticationTest extends TestCase
             ->get(route('home'))
             ->assertStatus(200)
             ->assertSee($user->name)
-            ->assertSee('Dashboard');
+            ->assertSee('Projects');
     }
 
     /** @test */
