@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateProjectsTable extends Migration
+class CreatePendingDeploymentsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,16 +13,17 @@ class CreateProjectsTable extends Migration
      */
     public function up()
     {
-        Schema::create('projects', function (Blueprint $table) {
+        Schema::create('pending_deployments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('team_id');
-            $table->string('name');
-            $table->string('deploy_endpoint')->unique();
+            $table->unsignedBigInteger('project_id');
+            $table->string('event');
+            $table->string('ref');
+            $table->string('repository');
             $table->timestamps();
 
-            $table->foreign('team_id')
+            $table->foreign('project_id')
                 ->references('id')
-                ->on('teams')
+                ->on('projects')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
         });
@@ -35,6 +36,6 @@ class CreateProjectsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('projects');
+        Schema::dropIfExists('pending_deployments');
     }
 }

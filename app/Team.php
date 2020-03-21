@@ -31,4 +31,9 @@ class Team extends Model
     {
         return $this->hasMany(Project::class);
     }
+
+    public function servers()
+    {
+        return $this->hasMany(Server::class);
+    }
 }
