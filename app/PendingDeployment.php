@@ -12,4 +12,9 @@ class PendingDeployment extends Model
         'ref',
         'repository'
     ];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
 }
