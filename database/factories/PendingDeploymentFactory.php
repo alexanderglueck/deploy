@@ -11,6 +11,7 @@ $factory->define(PendingDeployment::class, function (Faker $faker) {
         'event' => $faker->randomElement(['push']),
         'ref' => 'refs/heads/master',
         'repository' => 'jondoe/deploy',
-        'project_id' => factory(Project::class)
+        'project_id' => factory(Project::class),
+        'processed_at' => null
     ];
 });

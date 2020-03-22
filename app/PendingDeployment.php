@@ -10,7 +10,8 @@ class PendingDeployment extends Model
         'project_id',
         'event',
         'ref',
-        'repository'
+        'repository',
+        'processed_at'
     ];
 
     public function project()

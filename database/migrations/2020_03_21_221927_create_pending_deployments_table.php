@@ -19,6 +19,7 @@ class CreatePendingDeploymentsTable extends Migration
             $table->string('event');
             $table->string('ref');
             $table->string('repository');
+            $table->timestamp('processed_at')->nullable()->default(null);
             $table->timestamps();
 
             $table->foreign('project_id')
