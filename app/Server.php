@@ -10,4 +10,9 @@ class Server extends Model
     {
         return $this->belongsTo(Team::class);
     }
+
+    public function workflows()
+    {
+        return $this->hasMany(Workflow::class);
+    }
 }

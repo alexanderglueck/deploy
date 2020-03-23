@@ -27,6 +27,11 @@ class Project extends Model
         return $this->hasMany(Deployment::class);
     }
 
+    public function workflows()
+    {
+        return $this->hasMany(Workflow::class);
+    }
+
     protected static function booted()
     {
         static::creating(function (Project $project) {

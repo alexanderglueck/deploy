@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Deployment;
 use App\PendingDeployment;
 use App\Project;
+use App\Server;
+use App\Workflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,5 +46,22 @@ class ProjectTest extends TestCase
 
         $this->assertCount(2, $project->deployments);
         $this->assertEquals($project->id, $deployments->first->project->id);
+    }
+
+    /** @test */
+    public function a_project_has_many_workflows()
+    {
+        $project = factory(Project::class)->create();
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id
+        ]);
+
+        $this->assertCount(1, $project->workflows);
+
+        $this->assertEquals($project->id, $workflow->project->id);
+
+        $this->assertEquals($project->team_id, $workflow->server->team_id);
+        $this->assertEquals($project->team_id, $workflow->project->team_id);
     }
 }
