@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Deployment;
 use App\PendingDeployment;
 use App\Project;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
@@ -31,5 +31,18 @@ class ProjectTest extends TestCase
 
         $this->assertCount(2, $project->pendingDeployments);
         $this->assertEquals($project->id, $pendingDeployments->first->project->id);
+    }
+
+    /** @test */
+    public function a_project_has_many_deployments()
+    {
+        $project = factory(Project::class)->create();
+
+        $deployments = factory(Deployment::class, 2)->create([
+            'project_id' => $project->id
+        ]);
+
+        $this->assertCount(2, $project->deployments);
+        $this->assertEquals($project->id, $deployments->first->project->id);
     }
 }

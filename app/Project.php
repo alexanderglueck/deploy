@@ -22,6 +22,11 @@ class Project extends Model
         return $this->hasMany(PendingDeployment::class);
     }
 
+    public function deployments()
+    {
+        return $this->hasMany(Deployment::class);
+    }
+
     protected static function booted()
     {
         static::creating(function (Project $project) {

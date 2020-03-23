@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Deployment;
 use App\PendingDeployment;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -55,6 +56,10 @@ class ProcessPendingDeployments implements ShouldQueue
             'processed_at' => Carbon::now()
         ]);
 
+        $deployment = Deployment::create(
+            $this->pendingDeployment->toArray()
+        );
+
         // pending created
         // pending gets processed
         // no
@@ -73,5 +78,8 @@ class ProcessPendingDeployments implements ShouldQueue
 
         // Pending deployment processed
         $this->pendingDeployment->delete();
+        $deployment->update([
+            'deployed_at' => Carbon::now()
+        ]);
     }
 }
