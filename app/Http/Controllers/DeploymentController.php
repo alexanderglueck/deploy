@@ -2,13 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessPendingDeployments;
-use App\PendingDeployment;
+use App\Deployment;
+use App\Event;
+use App\Jobs\ProcessDeployments;
 use App\Project;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DeploymentController extends Controller
 {
+    /**
+     * @param Request $request
+     * @param Project $project
+     * @return string
+     */
     public function store(Request $request, Project $project)
     {
         $validatedRequest = $request->validate([
@@ -19,19 +26,24 @@ class DeploymentController extends Controller
 
         $data = [
             'project_id' => $project->id,
-            'event' => $validatedRequest['event'],
+            'event' => Event::getEvent($validatedRequest['event']),
             'ref' => $validatedRequest['ref'],
-            'repository' => $validatedRequest['repo']
+            'repository' => $validatedRequest['repo'],
+            'received_at' => Carbon::now()
         ];
 
-        // Delete older pending deployments
-        PendingDeployment::query()
+        // Cancel older pending deployments
+        Deployment::query()
             ->where($data)
             ->whereNull('processed_at')
-            ->delete();
+            ->whereNull('deployed_at')
+            ->whereNull('canceled_at')
+            ->update([
+                'canceled_at' => Carbon::now()
+            ]);
 
         // Queue new pending deployment
-        ProcessPendingDeployments::dispatch(PendingDeployment::create($data));
+        ProcessDeployments::dispatch(Deployment::create($data));
 
         return "OK";
     }

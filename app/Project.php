@@ -12,26 +12,33 @@ class Project extends Model
         'team_id'
     ];
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function team()
     {
         return $this->belongsTo(Team::class);
     }
 
-    public function pendingDeployments()
-    {
-        return $this->hasMany(PendingDeployment::class);
-    }
-
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function deployments()
     {
         return $this->hasMany(Deployment::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function workflows()
     {
         return $this->hasMany(Workflow::class);
     }
 
+    /**
+     *
+     */
     protected static function booted()
     {
         static::creating(function (Project $project) {

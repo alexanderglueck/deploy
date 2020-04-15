@@ -20,6 +20,7 @@ class CreateServersTable extends Migration
             $table->string('user')->default('root');
             $table->string('ip');
             $table->integer('port')->default(22);
+            $table->timestamp('setup_at')->nullable()->default(null);
             $table->timestamps();
 
             $table->foreign('team_id')

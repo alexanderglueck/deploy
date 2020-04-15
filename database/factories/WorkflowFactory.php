@@ -2,6 +2,7 @@
 
 /** @var \Illuminate\Database\Eloquent\Factory $factory */
 
+use App\Event;
 use App\Project;
 use App\Server;
 use App\Workflow;
@@ -27,7 +28,7 @@ $factory->define(Workflow::class, function (Faker $faker, $attributes) {
         'server_id' => function () use ($teamAttribute) {
             return factory(Server::class)->create($teamAttribute)->id;
         },
-        'event' => 1,
-        'actions' => ''
+        'event' => Event::PUSH,
+        'actions' => '#'
     ];
 });

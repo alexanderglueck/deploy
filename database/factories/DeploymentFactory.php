@@ -12,7 +12,10 @@ $factory->define(Deployment::class, function (Faker $faker) {
         'ref' => 'refs/heads/master',
         'repository' => 'jondoe/deploy',
         'project_id' => factory(Project::class),
+        'actions' => '#',
+        'received_at' => null,
         'processed_at' => null,
-        'deployed_at' => null
+        'deployed_at' => null,
+        'canceled_at' => null,
     ];
 });

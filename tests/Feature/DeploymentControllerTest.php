@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\PendingDeployment;
+use App\Deployment;
 use App\Project;
+use App\Server;
+use App\Workflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,34 +14,44 @@ class DeploymentControllerTest extends TestCase
     use RefreshDatabase;
 
     /** @test */
-    public function a_correct_call_creates_a_pending_deployment()
+    public function a_correct_call_creates_a_deployment()
     {
-        $project = factory(Project::class)->create();
+        $server = factory(Server::class)->create([
+            'ip' => 'test'
+        ]);
 
-        $pendingDeployment = factory(PendingDeployment::class)->make([
+        $project = factory(Project::class)->create([
+            'team_id' => $server->team_id
+        ]);
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id,
+            'server_id' => $server->id
+        ]);
+
+        $deployment = factory(Deployment::class)->make([
             'project_id' => $project->id
         ]);
 
-        $this->assertCount(0, $project->pendingDeployments);
+        $this->assertCount(0, $project->deployments);
 
         $this->get(route('api.deployment.store', $project->deploy_endpoint) . '?' . http_build_query([
-                'event' => $pendingDeployment->event,
-                'ref' => $pendingDeployment->ref,
-                'repo' => $pendingDeployment->repository,
-            ]))
-            ->assertSessionMissing('errors');
+                'event' => $deployment->event,
+                'ref' => $deployment->ref,
+                'repo' => $deployment->repository,
+            ]))->assertSessionMissing('errors');
 
-        $this->assertCount(1, $project->deployments);
+        $this->assertCount(1, $project->fresh()->deployments);
     }
 
     /** @test */
-    public function a_wrong_call_does_not_create_a_pending_deployment()
+    public function a_wrong_call_does_not_create_a_deployment()
     {
         $project = factory(Project::class)->create();
 
         $this->get(route('api.deployment.store', $project->deploy_endpoint))
             ->assertSessionHas('errors');
 
-        $this->assertCount(0, $project->pendingDeployments);
+        $this->assertCount(0, $project->deployments);
     }
 }

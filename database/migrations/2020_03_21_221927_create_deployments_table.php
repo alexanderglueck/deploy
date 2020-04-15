@@ -19,8 +19,11 @@ class CreateDeploymentsTable extends Migration
             $table->string('event');
             $table->string('ref');
             $table->string('repository');
+            $table->text('actions')->nullable()->default(null);
+            $table->timestamp('received_at')->nullable()->default(null);
             $table->timestamp('processed_at')->nullable()->default(null);
             $table->timestamp('deployed_at')->nullable()->default(null);
+            $table->timestamp('canceled_at')->nullable()->default(null);
             $table->timestamps();
 
             $table->foreign('project_id')

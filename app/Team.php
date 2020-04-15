@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Team extends Model
 {
+    protected $fillable = [
+        'name'
+    ];
+
+    /**
+     * @param User $user
+     * @return mixed
+     */
     public function addMember(User $user)
     {
         return TeamMembership::create([
@@ -14,6 +22,10 @@ class Team extends Model
         ]);
     }
 
+    /**
+     * @param User $user
+     * @return mixed
+     */
     public function removeMember(User $user)
     {
         return TeamMembership::where([
@@ -22,16 +34,25 @@ class Team extends Model
         ])->delete();
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function members()
     {
         return $this->belongsToMany(User::class, 'team_memberships')->withTimestamps();
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function projects()
     {
         return $this->hasMany(Project::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function servers()
     {
         return $this->hasMany(Server::class);

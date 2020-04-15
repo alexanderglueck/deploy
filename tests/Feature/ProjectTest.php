@@ -3,9 +3,7 @@
 namespace Tests\Feature;
 
 use App\Deployment;
-use App\PendingDeployment;
 use App\Project;
-use App\Server;
 use App\Workflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,19 +18,6 @@ class ProjectTest extends TestCase
         $project = factory(Project::class)->create();
 
         $this->assertNotNull($project->team);
-    }
-
-    /** @test */
-    public function a_project_has_many_pending_deployments()
-    {
-        $project = factory(Project::class)->create();
-
-        $pendingDeployments = factory(PendingDeployment::class, 2)->create([
-            'project_id' => $project->id
-        ]);
-
-        $this->assertCount(2, $project->pendingDeployments);
-        $this->assertEquals($project->id, $pendingDeployments->first->project->id);
     }
 
     /** @test */
