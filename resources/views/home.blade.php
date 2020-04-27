@@ -16,10 +16,17 @@
 
                         <ul>
                             @foreach($teams as $team)
-                                <li>{{ $team->name }}
+                                <li>
+
+                                    <a href="{{ route('team.show', $team) }}">{{ $team->name }}</a>
                                     <ul>
                                         @foreach ($team->projects as $project)
-                                            <li>{{ $project->name }} ({{ route('api.deployment.store', $project->deploy_endpoint) }})</li>
+                                            <li>
+                                                <a href="{{ route('project.show', [$team, $project]) }}">
+                                                    {{ $project->name }}
+                                                    ({{ route('api.deployment.store', $project->deploy_endpoint) }})
+                                                </a>
+                                            </li>
                                         @endforeach
                                     </ul>
                                 </li>

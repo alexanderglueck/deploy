@@ -20,4 +20,13 @@ Auth::routes();
 
 Route::group(['middleware' => 'auth'], function () {
     Route::get('/home', 'HomeController@index')->name('home');
+
+    Route::get('/teams/{team}', 'TeamController@show')->name('team.show');
+
+    Route::get('/teams/{team}/servers', 'ServerController@index')->name('server.index');
+    Route::get('/teams/{team}/servers/{server}', 'ServerController@show')->name('server.show');
+    Route::post('/teams/{team}/servers/{server}/setup', 'ServerSetupController@store')->name('server.setup.store');
+
+    Route::get('/teams/{team}/projects/{project}', 'ProjectController@show')->name('project.show');
+
 });
