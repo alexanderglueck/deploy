@@ -28,5 +28,4 @@ Route::group(['middleware' => 'auth'], function () {
     Route::post('/teams/{team}/servers/{server}/setup', 'ServerSetupController@store')->name('server.setup.store');
 
     Route::get('/teams/{team}/projects/{project}', 'ProjectController@show')->name('project.show');
-
 });

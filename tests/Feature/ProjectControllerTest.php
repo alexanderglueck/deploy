@@ -22,7 +22,7 @@ class ProjectControllerTest extends TestCase
             'team_id' => $user->teams->first()->id
         ]);
 
-        $this->actingAs($user)->get(route('project.show', $project))
+        $this->actingAs($user)->get(route('project.show', [$user->teams->first()->id, $project]))
             ->assertSee($project->name)
             ->assertOk();
     }
