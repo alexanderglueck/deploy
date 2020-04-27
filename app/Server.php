@@ -61,9 +61,13 @@ class Server extends Model
      */
     public function execute(Deployment $deployment)
     {
+        \Illuminate\Support\Facades\Log::error('Pre connect');
+
         $connection = (new Connection($this->ip, $this->port, $this->user))
             ->usingPrivateKey(storage_path('app/temp_id_rsa'))
             ->connect();
+
+        \Illuminate\Support\Facades\Log::error('Post connect');
 
         $output = '';
 
@@ -76,13 +80,25 @@ class Server extends Model
 
         $newCmd = implode("\n", $newCmds);
 
+        \Illuminate\Support\Facades\Log::error('Commands: ', [
+            'newCmd' => $newCmd
+        ]);
+
+        \Illuminate\Support\Facades\Log::error('Pre run');
+
         $connection->run("set -e" . "\n" . $newCmd, function ($str) use ($deployment) {
             $log = $deployment->log;
+
+            \Illuminate\Support\Facades\Log::error('In run', [
+                'log' => $str
+            ]);
 
             $log->update([
                 'log' => $log->log . $str
             ]);
         });
+
+        \Illuminate\Support\Facades\Log::error('Post run');
 
         $commandOutput = $connection->getOutput();
         if (trim($commandOutput) !== '') {
