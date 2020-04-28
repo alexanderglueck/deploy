@@ -24,6 +24,8 @@
                         @endforeach
 
                         <h2>Projects</h2>
+                        <a href="{{ route('project.create', [$team]) }}">Create project</a>
+
                         @foreach ($projects as $project)
                             <li>
                                 <a href="{{ route('project.show', [$team, $project]) }}">

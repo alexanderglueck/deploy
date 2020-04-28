@@ -15,4 +15,23 @@ class ProjectController extends Controller
             'project' => $project
         ]);
     }
+
+    public function create(Request $request, Team $team)
+    {
+        return view('project.create', [
+            'team' => $team,
+            'project' => new Project
+        ]);
+    }
+
+    public function store(Request $request, Team $team)
+    {
+        $validated = $request->validate([
+            'name' => 'required'
+        ]);
+
+        $team->projects()->create($validated);
+
+        return redirect()->route('team.show', [$team]);
+    }
 }

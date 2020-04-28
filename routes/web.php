@@ -27,5 +27,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/teams/{team}/servers/{server}', 'ServerController@show')->name('server.show');
     Route::post('/teams/{team}/servers/{server}/setup', 'ServerSetupController@store')->name('server.setup.store');
 
+    Route::get('/teams/{team}/projects/create', 'ProjectController@create')->name('project.create');
+    Route::post('/teams/{team}/projects', 'ProjectController@store')->name('project.store');
     Route::get('/teams/{team}/projects/{project}', 'ProjectController@show')->name('project.show');
 });
