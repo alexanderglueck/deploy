@@ -69,7 +69,7 @@ class Connection
      */
     public function connect()
     {
-        $this->connection = new SSH2($this->ip, $this->port, 300);
+        $this->connection = new SSH2($this->ip, $this->port, 20);
 
         if ( ! $this->connection) {
             throw new Exception('Could not connect to server.');
