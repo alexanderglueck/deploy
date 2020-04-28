@@ -86,7 +86,7 @@ class Server extends Model
 
         \Illuminate\Support\Facades\Log::error('Pre run');
 
-        $connection->run("set -e" . "\n" . $newCmd, function ($str) use ($deployment) {
+        $connection->run($newCmd, function ($str) use ($deployment) {
             $log = $deployment->log;
 
             \Illuminate\Support\Facades\Log::error('In run', [
@@ -103,6 +103,12 @@ class Server extends Model
         $commandOutput = $connection->getOutput();
         if (trim($commandOutput) !== '') {
             $output .= $commandOutput . "\n";
+
+            $log = $deployment->log;
+
+            $log->update([
+                'log' => $log->log . $commandOutput
+            ]);
         }
 
         $commandError = $connection->getError();
