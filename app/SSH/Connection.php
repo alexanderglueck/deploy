@@ -130,6 +130,8 @@ class Connection
      */
     public function run($command, $callback = null)
     {
+        $this->connection->enablePTY();
+
         if ($callback == null) {
             $this->output = $this->connection->exec($command, function ($str) {
                 $this->output .= $str;
