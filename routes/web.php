@@ -32,4 +32,8 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/teams/{team}/projects/create', 'ProjectController@create')->name('project.create');
     Route::post('/teams/{team}/projects', 'ProjectController@store')->name('project.store');
     Route::get('/teams/{team}/projects/{project}', 'ProjectController@show')->name('project.show');
+
+    Route::get('/teams/{team}/projects/{project}/workflows/create', 'WorkflowController@create')->name('workflow.create');
+    Route::post('/teams/{team}/projects/{project}/workflows', 'WorkflowController@store')->name('workflow.store');
+    Route::get('/teams/{team}/projects/{project}/workflows/{workflow}', 'WorkflowController@show')->name('workflow.show');
 });

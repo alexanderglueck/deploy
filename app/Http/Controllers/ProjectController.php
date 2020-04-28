@@ -12,7 +12,8 @@ class ProjectController extends Controller
     {
         return view('project.show', [
             'team' => $team,
-            'project' => $project
+            'project' => $project,
+            'workflows' => $project->workflows()->with('server')->get()
         ]);
     }
 

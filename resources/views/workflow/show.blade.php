@@ -5,7 +5,7 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card">
-                    <div class="card-header">{{ $project->name }}</div>
+                    <div class="card-header">{{ $project->name }} workflow: {{ $workflow->id }}</div>
 
                     <div class="card-body">
                         @if (session('status'))
@@ -14,13 +14,7 @@
                             </div>
                         @endif
 
-                        <a href="{{ route('workflow.create', [$team, $project]) }}">Create workflow</a>
-                        
-                        <ul>
-                        @foreach($workflows as $workflow)
-                            <li>{{ $workflow->server->name }}: {{ $workflow->actions }}</li>
-                        @endforeach
-                        </ul>
+                        {{ $workflow }}
                     </div>
                 </div>
             </div>
