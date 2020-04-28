@@ -24,4 +24,35 @@ class ServerControllerTest extends TestCase
             ->assertSee($server->name)
             ->assertOk();
     }
+
+    /** @test */
+    public function a_server_has_a_create_view()
+    {
+        $user = factory(User::class)->create();
+
+        $this->actingAs($user)->get(route('server.create', [$user->teams->first()->id]))
+            ->assertSee("Create")
+            ->assertOk();
+    }
+
+    /** @test */
+    public function a_server_can_be_created()
+    {
+        $user = factory(User::class)->create();
+
+        $teamId = $user->teams->first()->id;
+
+        $server = factory(Server::class)->make([
+            'team_id' => $user->teams->first()->id
+        ]);
+
+        $this->actingAs($user)->post(route('server.store', [$teamId]), $server->toArray());
+
+        $this->assertDatabaseHas('servers', [
+            'name' => $server->name,
+            'user' => $server->user,
+            'ip' => $server->ip,
+            'port' => $server->port,
+        ]);
+    }
 }

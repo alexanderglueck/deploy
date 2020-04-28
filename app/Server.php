@@ -10,9 +10,15 @@ class Server extends Model
 {
     protected $fillable = [
         'name',
+        'user',
         'ip',
         'port',
         'setup_at'
+    ];
+
+    protected $attributes = [
+        'user' => 'root',
+        'port' => 22
     ];
 
     /**
@@ -103,12 +109,6 @@ class Server extends Model
         $commandOutput = $connection->getOutput();
         if (trim($commandOutput) !== '') {
             $output .= $commandOutput . "\n";
-
-            $log = $deployment->log;
-
-            $log->update([
-                'log' => $log->log . $commandOutput
-            ]);
         }
 
         $commandError = $connection->getError();

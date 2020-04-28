@@ -15,6 +15,8 @@
                         @endif
 
                         <h2>Servers</h2>
+                        <a href="{{ route('server.create', [$team]) }}">Create server</a>
+
                         @foreach ($servers as $server)
                             <li>
                                 <a href="{{ route('server.show', [$team, $server]) }}">
