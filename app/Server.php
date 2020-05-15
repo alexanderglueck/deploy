@@ -116,7 +116,7 @@ class Server extends Model
             $log = $deployment->log;
 
             $log->update([
-                'log' => $log->log . $commandError
+                'log' => $log->log . 'ERROR: ' . $commandError
             ]);
         }
 
