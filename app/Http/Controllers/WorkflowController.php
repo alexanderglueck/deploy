@@ -40,4 +40,11 @@ class WorkflowController extends Controller
 
         return redirect()->route('project.show', [$team, $project]);
     }
+
+    public function destroy(Request $request, Team $team, Project $project, Workflow $workflow)
+    {
+        $workflow->delete();
+
+        return redirect()->route('project.show', [$team, $project]);
+    }
 }

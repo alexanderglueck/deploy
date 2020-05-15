@@ -29,7 +29,7 @@ class WorkflowControllerTest extends TestCase
     }
 
     /** @test */
-    public function a_project_can_be_created()
+    public function a_workflow_can_be_created()
     {
         $user = factory(User::class)->create();
 
@@ -51,6 +51,48 @@ class WorkflowControllerTest extends TestCase
             'actions' => $workflow->actions,
             'server_id' => $workflow->server_id,
             'project_id' => $project->id,
+        ]);
+    }
+
+    /** @test */
+    public function a_workflow_can_be_shown()
+    {
+        $user = factory(User::class)->create();
+
+        $teamId = $user->teams->first()->id;
+
+        $project = factory(Project::class)->create([
+            'team_id' => $teamId
+        ]);
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id
+        ]);
+
+        $this->actingAs($user)->get(route('workflow.show', [$teamId, $project->id, $workflow]))
+            ->assertSee($workflow->actions);
+    }
+
+    /** @test */
+    public function a_workflow_can_be_deleted()
+    {
+        $user = factory(User::class)->create();
+
+        $teamId = $user->teams->first()->id;
+
+        $project = factory(Project::class)->create([
+            'team_id' => $teamId
+        ]);
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id
+        ]);
+
+        $this->actingAs($user)->delete(route('workflow.destroy', [$teamId, $project->id, $workflow]))
+            ->assertRedirect(route('project.show', [$teamId, $project->id]));
+
+        $this->assertDatabaseMissing('workflows', [
+            'id' => $workflow->id
         ]);
     }
 }
