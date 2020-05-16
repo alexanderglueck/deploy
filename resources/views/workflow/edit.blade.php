@@ -18,7 +18,6 @@
                             @method('PUT')
                             @include('workflow.partials.edit', ['buttonText' => 'Edit'])
                         </form>
-
                     </div>
                 </div>
             </div>
