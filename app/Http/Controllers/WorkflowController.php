@@ -47,4 +47,27 @@ class WorkflowController extends Controller
 
         return redirect()->route('project.show', [$team, $project]);
     }
+
+    public function edit(Request $request, Team $team, Project $project, Workflow $workflow)
+    {
+        return view('workflow.edit', [
+            'team' => $team,
+            'project' => $project,
+            'servers' => $team->servers,
+            'workflow' => $workflow
+        ]);
+    }
+
+    public function update(Request $request, Team $team, Project $project, Workflow $workflow)
+    {
+        $validated = $request->validate([
+            'event' => 'required',
+            'actions' => 'required',
+            'server_id' => 'required'
+        ]);
+
+        $workflow->update($validated);
+
+        return redirect()->route('project.show', [$team, $project]);
+    }
 }

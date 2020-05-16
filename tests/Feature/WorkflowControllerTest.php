@@ -95,4 +95,59 @@ class WorkflowControllerTest extends TestCase
             'id' => $workflow->id
         ]);
     }
+
+    /** @test */
+    public function a_workflow_can_be_edited()
+    {
+        $user = factory(User::class)->create();
+
+        $teamId = $user->teams->first()->id;
+
+        $project = factory(Project::class)->create([
+            'team_id' => $teamId
+        ]);
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id
+        ]);
+
+        $this->actingAs($user)->get(route('workflow.edit', [$teamId, $project->id, $workflow]))
+            ->assertSee($workflow->actions)
+            ->assertSee('Edit workflow');
+    }
+
+    /** @test */
+    public function a_workflow_can_be_updated()
+    {
+        $user = factory(User::class)->create();
+
+        $teamId = $user->teams->first()->id;
+
+        $project = factory(Project::class)->create([
+            'team_id' => $teamId
+        ]);
+
+        $workflow = factory(Workflow::class)->create([
+            'project_id' => $project->id,
+            'actions' => 'old'
+        ]);
+
+        $this->assertDatabaseHas('workflows', [
+            'id' => $workflow->id,
+            'actions' => 'old'
+        ]);
+
+        $newAction = 'someting';
+
+        $this->actingAs($user)->put(route('workflow.update', [$teamId, $project->id, $workflow]),
+            array_merge($workflow->toArray(), ['actions' => $newAction])
+        )
+            ->assertRedirect(route('project.show', [$teamId, $project->id]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('workflows', [
+            'id' => $workflow->id,
+            'actions' => $newAction
+        ]);
+    }
 }

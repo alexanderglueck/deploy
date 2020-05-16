@@ -25,10 +25,15 @@
                                         </summary>
                                         <pre class="text-white bg-dark"><samp>{{ $workflow->actions }}</samp></pre>
                                         <div>
+
                                             <form
                                                 action="{{ route('workflow.destroy', [$team, $project, $workflow]) }}"
                                                 method="post"
                                             >
+                                                <a href="{{ route('workflow.edit', [$team, $project, $workflow]) }}" class="btn btn-outline-secondary">
+                                                    Edit
+                                                </a>
+
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-danger">Delete</button>

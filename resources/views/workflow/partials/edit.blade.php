@@ -24,7 +24,7 @@
 @enderror
 
 <label for="actions">Actions</label>
-<textarea id="actions" name="actions" required>{{ old('actions', $project->actions) }}</textarea>
+<textarea id="actions" name="actions" required>{{ old('actions', $workflow->actions) }}</textarea>
 @error('actions')
 <p><strong class="text-danger">{{ $message }}</strong></p>
 @enderror
