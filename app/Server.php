@@ -75,8 +75,6 @@ class Server extends Model
 
         \Illuminate\Support\Facades\Log::error('Post connect');
 
-        $output = '';
-
         $commands = explode("\r\n", $deployment->actions);
 
         $newCmds = [];
@@ -107,6 +105,8 @@ class Server extends Model
                 'log' => $log->log . $str
             ]);
         });
+
+        $output = '';
 
         \Illuminate\Support\Facades\Log::error('Post run');
 
