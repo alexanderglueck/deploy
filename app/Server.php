@@ -99,6 +99,10 @@ class Server extends Model
                 'log' => $str
             ]);
 
+            \Illuminate\Support\Facades\Log::error('Current log', [
+                'currentLog' => $log->log
+            ]);
+
             $log->update([
                 'log' => $log->log . $str
             ]);
@@ -106,10 +110,20 @@ class Server extends Model
 
         \Illuminate\Support\Facades\Log::error('Post run');
 
+        $log = $deployment->log;
+
+        \Illuminate\Support\Facades\Log::error('Current log', [
+            'currentLogPostRun' => $log->log
+        ]);
+
         $commandOutput = $connection->getOutput();
         if (trim($commandOutput) !== '') {
             $output .= $commandOutput . "\n";
         }
+
+        \Illuminate\Support\Facades\Log::error('Output', [
+            'output' => $commandOutput
+        ]);
 
         $commandError = $connection->getError();
         if (trim($commandError) !== '') {

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Deployment;
 use App\Project;
+use App\Server;
 use App\Workflow;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -66,10 +67,11 @@ class ProcessDeployments implements ShouldQueue
             'actions' => $workflow->actions
         ]);
 
+        /** @var Server $server */
         $server = $workflow->server;
 
         if ($server->ip != 'test') {
-            $workflow->server->execute($this->deployment);
+            $server->execute($this->deployment);
         }
 
         $this->deployment->update([
