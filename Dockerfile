@@ -2,20 +2,12 @@ FROM php:8.0-fpm
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y sendmail libpng-dev libzip-dev zip
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
-RUN docker-php-ext-install pdo_mysql bcmath pcntl zip
+RUN chmod +x /usr/local/bin/install-php-extensions && sync && \
+    install-php-extensions pdo_mysql bcmath pcntl zip gd imagick
 
-# gd
-RUN apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
-    docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ && \
-    docker-php-ext-install gd
-
-# imagick
-RUN apt-get update && apt-get install -y \
-    libmagickwand-dev --no-install-recommends \
-    && pecl install imagick \
-	&& docker-php-ext-enable imagick
+RUN apt-get update -y && apt-get install -y sendmail
 
 ARG HOST_USER_ID=1000
 ARG HOST_GROUP_ID=1000
