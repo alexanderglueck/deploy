@@ -13,7 +13,7 @@ class TeamControllerTest extends TestCase
     /** @test */
     public function a_team_can_be_shown()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $team = $user->teams()->first();
 

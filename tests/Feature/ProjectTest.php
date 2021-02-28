@@ -15,7 +15,7 @@ class ProjectTest extends TestCase
     /** @test */
     public function a_project_belongs_to_a_team()
     {
-        $project = factory(Project::class)->create();
+        $project = Project::factory()->create();
 
         $this->assertNotNull($project->team);
     }
@@ -23,9 +23,9 @@ class ProjectTest extends TestCase
     /** @test */
     public function a_project_has_many_deployments()
     {
-        $project = factory(Project::class)->create();
+        $project = Project::factory()->create();
 
-        $deployments = factory(Deployment::class, 2)->create([
+        $deployments = Deployment::factory()->count(2)->create([
             'project_id' => $project->id
         ]);
 
@@ -36,11 +36,11 @@ class ProjectTest extends TestCase
     /** @test */
     public function a_project_has_many_workflows()
     {
-        $project = factory(Project::class)->create();
+        $project = Project::factory()->create();
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory([
             'project_id' => $project->id
-        ]);
+        ])->project()->create();
 
         $this->assertCount(1, $project->workflows);
 

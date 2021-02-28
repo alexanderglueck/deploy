@@ -15,9 +15,9 @@ class DeploymentTest extends TestCase
     /** @test */
     public function a_deployment_belongs_to_a_project()
     {
-        $project = factory(Project::class)->create();
+        $project = Project::factory()->create();
 
-        $deployment = factory(Deployment::class)->create([
+        $deployment = Deployment::factory()->create([
             'project_id' => $project->id
         ]);
 
@@ -28,7 +28,7 @@ class DeploymentTest extends TestCase
     /** @test */
     public function a_deployment_has_one_log()
     {
-        $deployment = factory(Deployment::class)->create();
+        $deployment = Deployment::factory()->create();
 
         $this->assertNotNull($deployment->log);
         $this->assertInstanceOf(Log::class, $deployment->log);

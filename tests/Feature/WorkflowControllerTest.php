@@ -15,11 +15,11 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_has_a_create_view()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
@@ -31,15 +31,15 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_can_be_created()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
-        $workflow = factory(Workflow::class)->make([
+        $workflow = Workflow::factory()->make([
             'project_id' => $project->id
         ]);
 
@@ -57,15 +57,15 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_can_be_shown()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'project_id' => $project->id
         ]);
 
@@ -76,15 +76,15 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_can_be_deleted()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'project_id' => $project->id
         ]);
 
@@ -99,15 +99,15 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_can_be_edited()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'project_id' => $project->id
         ]);
 
@@ -119,15 +119,15 @@ class WorkflowControllerTest extends TestCase
     /** @test */
     public function a_workflow_can_be_updated()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $teamId
         ]);
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'project_id' => $project->id,
             'actions' => 'old'
         ]);

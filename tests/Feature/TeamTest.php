@@ -17,9 +17,9 @@ class TeamTest extends TestCase
     /** @test */
     public function a_user_can_join_a_team()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
         $team->addMember($user);
 
@@ -31,9 +31,9 @@ class TeamTest extends TestCase
     /** @test */
     public function a_user_can_leave_a_team()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
         $team->addMember($user);
 
@@ -49,9 +49,9 @@ class TeamTest extends TestCase
     /** @test */
     public function a_team_has_members()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
         $team->addMember($user);
 
@@ -61,9 +61,9 @@ class TeamTest extends TestCase
     /** @test */
     public function a_team_has_projects()
     {
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $team->id
         ]);
 
@@ -74,9 +74,9 @@ class TeamTest extends TestCase
     /** @test */
     public function a_team_has_servers()
     {
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
-        $server = factory(Server::class)->create([
+        $server = Server::factory()->create([
             'team_id' => $team->id
         ]);
 

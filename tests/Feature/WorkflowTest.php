@@ -15,9 +15,9 @@ class WorkflowTest extends TestCase
     /** @test */
     public function a_workflow_belongs_to_a_server()
     {
-        $server = factory(Server::class)->create();
+        $server = Server::factory()->create();
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'server_id' => $server->id
         ]);
 
@@ -28,9 +28,9 @@ class WorkflowTest extends TestCase
     /** @test */
     public function a_workflow_belongs_to_a_project()
     {
-        $project = factory(Project::class)->create();
+        $project = Project::factory()->create();
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'project_id' => $project->id
         ]);
 

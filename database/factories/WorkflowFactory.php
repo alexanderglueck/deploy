@@ -1,34 +1,46 @@
 <?php
 
-/** @var \Illuminate\Database\Eloquent\Factory $factory */
+namespace Database\Factories;
 
 use App\Event;
 use App\Project;
 use App\Server;
 use App\Workflow;
-use Faker\Generator as Faker;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Model;
 
-$factory->define(Workflow::class, function (Faker $faker, $attributes) {
-    $teamAttribute = [];
+class WorkflowFactory extends Factory
+{
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var string
+     */
+    protected $model = Workflow::class;
 
-    if (isset($attributes['project_id']) && ! isset($attributes['server_id'])) {
-        // Create a server belonging to the projects team
-        $teamAttribute['team_id'] = Project::find($attributes['project_id'])->team_id;
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        return [
+            'project_id' => Project::factory(),
+            'server_id' => Server::factory(),
+            'event' => Event::PUSH,
+            'actions' => '#'
+        ];
     }
 
-    if (isset($attributes['server_id']) && ! isset($attributes['project_id'])) {
-        // Create a project belonging to the servers team
-        $teamAttribute['team_id'] = Server::find($attributes['server_id'])->team_id;
-    }
+    public function project()
+    {
+        return $this->state(function (array $attributes) {
+            $teamAttribute['team_id'] = Project::find($attributes['project_id'])->team_id;
 
-    return [
-        'project_id' => function () use ($teamAttribute) {
-            return factory(Project::class)->create($teamAttribute)->id;
-        },
-        'server_id' => function () use ($teamAttribute) {
-            return factory(Server::class)->create($teamAttribute)->id;
-        },
-        'event' => Event::PUSH,
-        'actions' => '#'
-    ];
-});
+            return [
+                'server_id' => Server::factory()->create($teamAttribute),
+            ];
+        });
+    }
+}

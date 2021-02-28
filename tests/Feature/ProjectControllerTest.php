@@ -16,9 +16,9 @@ class ProjectControllerTest extends TestCase
     /** @test */
     public function a_project_can_be_shown()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
-        $project = factory(Project::class)->create([
+        $project = Project::factory()->create([
             'team_id' => $user->teams->first()->id
         ]);
 
@@ -30,7 +30,7 @@ class ProjectControllerTest extends TestCase
     /** @test */
     public function a_project_has_a_create_view()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('project.create', [$user->teams->first()->id]))
             ->assertSee("Create")
@@ -40,11 +40,11 @@ class ProjectControllerTest extends TestCase
     /** @test */
     public function a_project_can_be_created()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $project = factory(Project::class)->make([
+        $project = Project::factory()->make([
             'team_id' => $user->teams->first()->id
         ]);
 

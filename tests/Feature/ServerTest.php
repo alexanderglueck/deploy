@@ -16,9 +16,9 @@ class ServerTest extends TestCase
     /** @test */
     public function a_server_belongs_to_a_team()
     {
-        $team = factory(Team::class)->create();
+        $team = Team::factory()->create();
 
-        $server = factory(Server::class)->create([
+        $server = Server::factory()->create([
             'team_id' => $team->id
         ]);
 
@@ -29,9 +29,9 @@ class ServerTest extends TestCase
     /** @test */
     public function a_server_has_many_workflows()
     {
-        $server = factory(Server::class)->create();
+        $server = Server::factory()->create();
 
-        $workflow = factory(Workflow::class)->create([
+        $workflow = Workflow::factory()->create([
             'server_id' => $server->id
         ]);
 

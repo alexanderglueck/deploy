@@ -23,7 +23,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function a_guest_can_login_with_correct_credentials()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this->post(route('login'), [
             'email' => $user->email,
@@ -36,7 +36,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function a_guest_cannot_login_with_incorrect_credentials()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this
             ->post(route('login'), [
@@ -51,7 +51,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function dashboard_page_works()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this
             ->actingAs($user)
@@ -64,7 +64,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function a_user_can_logout()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this
             ->actingAs($user)
@@ -86,7 +86,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function a_guest_can_register()
     {
-        $guest = factory(User::class)->make();
+        $guest = User::factory()->make();
 
         $this->post(route('register'), [
             'name' => $guest->name,
@@ -112,7 +112,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function a_user_can_request_a_password_reset_email()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this->post(route('password.email'), [
             'email' => $user->email,

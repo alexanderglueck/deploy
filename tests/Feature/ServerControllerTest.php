@@ -14,9 +14,9 @@ class ServerControllerTest extends TestCase
     /** @test */
     public function a_teams_servers_can_be_shown()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
-        $server = factory(Server::class)->create([
+        $server = Server::factory()->create([
             'team_id' => $user->teams->first()->id
         ]);
 
@@ -28,7 +28,7 @@ class ServerControllerTest extends TestCase
     /** @test */
     public function a_server_has_a_create_view()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $this->actingAs($user)->get(route('server.create', [$user->teams->first()->id]))
             ->assertSee("Create")
@@ -38,11 +38,11 @@ class ServerControllerTest extends TestCase
     /** @test */
     public function a_server_can_be_created()
     {
-        $user = factory(User::class)->create();
+        $user = User::factory()->create();
 
         $teamId = $user->teams->first()->id;
 
-        $server = factory(Server::class)->make([
+        $server = Server::factory()->make([
             'team_id' => $user->teams->first()->id
         ]);
 

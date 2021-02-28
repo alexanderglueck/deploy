@@ -1,14 +1,30 @@
 <?php
 
-/** @var \Illuminate\Database\Eloquent\Factory $factory */
+namespace Database\Factories;
 
 use App\Deployment;
 use App\Log;
-use Faker\Generator as Faker;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
-$factory->define(Log::class, function (Faker $faker) {
-    return [
-        'deployment_id' => factory(Deployment::class),
-        'log' => $faker->sentence
-    ];
-});
+class LogFactory extends Factory
+{
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var string
+     */
+    protected $model = Log::class;
+
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        return [
+            'deployment_id' => Deployment::factory(),
+            'log' => $this->faker->sentence
+        ];
+    }
+}

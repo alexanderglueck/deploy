@@ -1,21 +1,37 @@
 <?php
 
-/** @var \Illuminate\Database\Eloquent\Factory $factory */
+namespace Database\Factories;
 
-use App\Deployment;
 use App\Project;
-use Faker\Generator as Faker;
+use App\Deployment;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
-$factory->define(Deployment::class, function (Faker $faker) {
-    return [
-        'event' => $faker->randomElement(['push']),
-        'ref' => 'refs/heads/master',
-        'repository' => 'jondoe/deploy',
-        'project_id' => factory(Project::class),
-        'actions' => '#',
-        'received_at' => null,
-        'processed_at' => null,
-        'deployed_at' => null,
-        'canceled_at' => null,
-    ];
-});
+class DeploymentFactory extends Factory
+{
+    /**
+     * The name of the factory's corresponding model.
+     *
+     * @var string
+     */
+    protected $model = Deployment::class;
+
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition()
+    {
+        return [
+            'event' => $this->faker->randomElement(['push']),
+            'ref' => 'refs/heads/master',
+            'repository' => 'jondoe/deploy',
+            'project_id' => Project::factory(),
+            'actions' => '#',
+            'received_at' => null,
+            'processed_at' => null,
+            'deployed_at' => null,
+            'canceled_at' => null,
+        ];
+    }
+}

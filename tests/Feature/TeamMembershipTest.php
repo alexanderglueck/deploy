@@ -17,7 +17,7 @@ class TeamMembershipTest extends TestCase
     /** @test */
     public function a_membership_belongs_to_a_team()
     {
-        $membership = factory(TeamMembership::class)->create();
+        $membership = TeamMembership::factory()->create();
 
         $this->assertNotNull($membership->team);
     }
@@ -25,7 +25,7 @@ class TeamMembershipTest extends TestCase
     /** @test */
     public function a_membership_belongs_to_a_user()
     {
-        $membership = factory(TeamMembership::class)->create();
+        $membership = TeamMembership::factory()->create();
 
         $this->assertNotNull($membership->user);
     }
