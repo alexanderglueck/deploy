@@ -18,23 +18,22 @@ class DeploymentController extends Controller
      */
     public function store(Request $request, Project $project)
     {
-        $validatedRequest = $request->validate([
-            'event' => 'required',
-            'ref' => 'required',
-            'repo' => 'required'
-        ]);
-
         $data = [
             'project_id' => $project->id,
-            'event' => Event::getEvent($validatedRequest['event']),
-            'ref' => $validatedRequest['ref'],
-            'repository' => $validatedRequest['repo'],
+            'event' => Event::PUSH,
+            'ref' => 'manual_deploy',
+            'repository' => 'manual_deploy',
             'received_at' => Carbon::now()
         ];
 
         // Cancel older pending deployments
         Deployment::query()
-            ->where($data)
+            ->where([
+                'project_id' => $data['project_id'],
+                'ref' => $data['ref'],
+                'event' => $data['event'],
+                'repository' => $data['repository']
+            ])
             ->whereNull('processed_at')
             ->whereNull('deployed_at')
             ->whereNull('canceled_at')
@@ -45,6 +44,6 @@ class DeploymentController extends Controller
         // Queue new pending deployment
         ProcessDeployments::dispatch(Deployment::create($data));
 
-        return "OK";
+        return redirect()->route('project.show', [$project->team, $project]);
     }
 }

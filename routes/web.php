@@ -39,4 +39,6 @@ Route::group(['middleware' => 'auth'], function () {
     Route::delete('/teams/{team}/projects/{project}/workflows/{workflow}', [\App\Http\Controllers\WorkflowController::class, 'destroy'])->name('workflow.destroy');
     Route::get('/teams/{team}/projects/{project}/workflows/{workflow}/edit', [\App\Http\Controllers\WorkflowController::class, 'edit'])->name('workflow.edit');
     Route::put('/teams/{team}/projects/{project}/workflows/{workflow}', [\App\Http\Controllers\WorkflowController::class, 'update'])->name('workflow.update');
+
+    Route::post('/deploy/{project:deploy_endpoint}', [\App\Http\Controllers\DeploymentController::class, 'store'])->name('deployment.store');
 });

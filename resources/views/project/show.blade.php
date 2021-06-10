@@ -38,6 +38,10 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-danger">Delete</button>
                                             </form>
+                                            <form action="{{ route('deployment.store', $project ) }}" method="post">
+                                                @csrf
+                                                <button type="submit" class="btn btn-primary">Deploy</button>
+                                            </form>
                                         </div>
                                     </details>
                                 </li>
