@@ -14,4 +14,4 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/deploy/{project:deploy_endpoint}', [\App\Http\Controllers\DeploymentController::class, 'store'])->name('api.deployment.store');
+Route::get('/deploy/{project:deploy_endpoint}', [\App\Http\Controllers\ApiDeploymentController::class, 'store'])->name('api.deployment.store');
