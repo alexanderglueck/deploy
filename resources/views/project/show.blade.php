@@ -5,7 +5,7 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card mb-2">
-                    <div class="card-header">{{ $project->name }}</div>
+                    <div class="card-header">{{ $project->name }} ({{ route('api.deployment.store', $project->deploy_endpoint) }})</div>
 
                     <div class="card-body">
                         @if (session('status'))
