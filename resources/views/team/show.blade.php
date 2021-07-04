@@ -4,37 +4,43 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">{{ $team->name }}</div>
+                <div class="card mb-3">
+                    <div class="card-body">{{ $team->name }}</div>
+                </div>
 
-                    <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
+                @if (session('status'))
+                    <div class="alert alert-success" role="alert">
+                        {{ session('status') }}
+                    </div>
+                @endif
 
-                        <h2>Servers</h2>
-                        <a href="{{ route('server.create', [$team]) }}">Create server</a>
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        Servers
+                        <a class="btn btn-primary btn-sm" href="{{ route('server.create', [$team]) }}">Create server</a>
+                    </div>
 
+                    <div class="list-group list-group-flush">
                         @foreach ($servers as $server)
-                            <li>
-                                <a href="{{ route('server.show', [$team, $server]) }}">
-                                    {{ $server->name }}
-                                </a>
-                            </li>
+                            <a class="list-group-item list-group-item-action"
+                               href="{{ route('server.show', [$team, $server]) }}">
+                                {{ $server->name }}
+                            </a>
                         @endforeach
-
-                        <h2>Projects</h2>
-                        <a href="{{ route('project.create', [$team]) }}">Create project</a>
-
+                    </div>
+                </div>
+                <div class="card ">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        Projects
+                        <a class="btn btn-primary btn-sm" href="{{ route('project.create', [$team]) }}">Create project</a>
+                    </div>
+                    <div class="list-group list-group-flush">
                         @foreach ($projects as $project)
-                            <li>
-                                <a href="{{ route('project.show', [$team, $project]) }}">
-                                    {{ $project->name }}
-                                    ({{ route('api.deployment.store', $project->deploy_endpoint) }})
-                                </a>
-                            </li>
+                            <a class="list-group-item list-group-item-action"
+                               href="{{ route('project.show', [$team, $project]) }}">
+                                {{ $project->name }}
+                                ({{ route('api.deployment.store', $project->deploy_endpoint) }})
+                            </a>
                         @endforeach
                     </div>
                 </div>

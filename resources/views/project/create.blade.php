@@ -14,9 +14,9 @@
                             </div>
                         @endif
 
-                            <form action="{{ route('project.store', [$team]) }}" method="post">
-                                @include('project.partials.edit')
-                            </form>
+                        <form action="{{ route('project.store', [$team]) }}" method="post">
+                            @include('project.partials.edit')
+                        </form>
 
                     </div>
                 </div>
