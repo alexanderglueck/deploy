@@ -8,12 +8,6 @@
                     <div class="card-body">{{ $team->name }}</div>
                 </div>
 
-                @if (session('status'))
-                    <div class="alert alert-success" role="alert">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         Servers

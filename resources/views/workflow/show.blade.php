@@ -8,12 +8,6 @@
                     <div class="card-header">{{ $project->name }} workflow: {{ $workflow->id }}</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         {{ $workflow }}
                     </div>
                 </div>

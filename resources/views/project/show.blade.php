@@ -8,12 +8,6 @@
                     <div class="card-header">{{ $project->name }} ({{ route('api.deployment.store', $project->deploy_endpoint) }})</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         <a href="{{ route('workflow.create', [$team, $project]) }}">Create workflow</a>
 
                         <ul>
@@ -54,12 +48,6 @@
                     <div class="card-header">Deployments {{ $project->name }}</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         <ul>
                             @foreach($deployments as $deployment)
                                 <li>

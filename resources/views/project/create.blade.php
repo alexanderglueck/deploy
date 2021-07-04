@@ -8,16 +8,9 @@
                     <div class="card-header">Create project</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         <form action="{{ route('project.store', [$team]) }}" method="post">
                             @include('project.partials.edit')
                         </form>
-
                     </div>
                 </div>
             </div>

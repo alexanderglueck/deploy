@@ -8,12 +8,6 @@
                     <div class="card-header">Create workflow</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         <form action="{{ route('workflow.store', [$team, $project]) }}" method="post">
                             @include('workflow.partials.edit')
                         </form>

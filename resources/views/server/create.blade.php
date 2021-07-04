@@ -8,16 +8,9 @@
                     <div class="card-header">Create server</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
-                            <form action="{{ route('server.store', [$team]) }}" method="post">
-                                @include('server.partials.edit')
-                            </form>
-
+                        <form action="{{ route('server.store', [$team]) }}" method="post">
+                            @include('server.partials.edit')
+                        </form>
                     </div>
                 </div>
             </div>

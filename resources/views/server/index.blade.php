@@ -8,12 +8,6 @@
                     <div class="card-header">{{ $team->name }} - Servers</div>
 
                     <div class="card-body">
-                        @if (session('status'))
-                            <div class="alert alert-success" role="alert">
-                                {{ session('status') }}
-                            </div>
-                        @endif
-
                         <ul>
                             @foreach($servers as $server)
                                 <li>{{ $server->name }}</li>
