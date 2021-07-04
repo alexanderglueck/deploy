@@ -18,20 +18,20 @@
                                             Workflow {{ $loop->iteration }} on {{ $workflow->server->name }}
                                         </summary>
                                         <pre class="text-white bg-dark"><samp>{{ $workflow->actions }}</samp></pre>
-                                        <div>
-
+                                        <div class="d-flex">
+                                            <a href="{{ route('workflow.edit', [$team, $project, $workflow]) }}" class="btn btn-outline-secondary mr-1">
+                                                Edit
+                                            </a>
                                             <form
                                                 action="{{ route('workflow.destroy', [$team, $project, $workflow]) }}"
                                                 method="post"
+                                                class="mr-1 confirm-delete"
                                             >
-                                                <a href="{{ route('workflow.edit', [$team, $project, $workflow]) }}" class="btn btn-outline-secondary">
-                                                    Edit
-                                                </a>
-
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-danger">Delete</button>
                                             </form>
+
                                             <form action="{{ route('deployment.store', $project ) }}" method="post">
                                                 @csrf
                                                 <button type="submit" class="btn btn-primary">Deploy</button>
