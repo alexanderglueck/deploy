@@ -8,6 +8,33 @@
                     <div class="card-body">Dashboard</div>
                 </div>
 
+                <div class="card mb-3">
+                    <div class="card-header">Current deployments</div>
+                    <div class="list-group list-group-flush">
+                        @foreach ($currentDeployments as $deployment)
+                            <a class="list-group-item list-group-item-action"
+                               href="{{ route('project.show', [$team, $deployment->project]) }}">
+                                {{ $deployment->project->name }}
+                                ({{ route('api.deployment.store', $deployment->project->deploy_endpoint) }})
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">Recent deployments</div>
+                    <div class="list-group list-group-flush">
+                        @foreach ($recentDeployments as $deployment)
+                            <a class="list-group-item list-group-item-action"
+                               href="{{ route('project.show', [$team, $deployment->project]) }}">
+                                {{ $deployment->project->name }}
+                                ({{ route('api.deployment.store', $deployment->project->deploy_endpoint) }})
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+
+
                 @foreach($teams as $team)
                     <div class="card mb-3">
                         <div class="card-header"><a href="{{ route('team.show', $team) }}">{{ $team->name }}</a></div>
