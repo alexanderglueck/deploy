@@ -13,7 +13,7 @@
                     <div class="list-group list-group-flush">
                         @foreach ($currentDeployments as $deployment)
                             <a class="list-group-item list-group-item-action"
-                               href="{{ route('project.show', [$team, $deployment->project]) }}">
+                               href="{{ route('project.show', [$deployment->project->team, $deployment->project]) }}">
                                 {{ $deployment->project->name }}
                                 ({{ route('api.deployment.store', $deployment->project->deploy_endpoint) }})
                             </a>
@@ -26,7 +26,7 @@
                     <div class="list-group list-group-flush">
                         @foreach ($recentDeployments as $deployment)
                             <a class="list-group-item list-group-item-action"
-                               href="{{ route('project.show', [$team, $deployment->project]) }}">
+                               href="{{ route('project.show', [$deployment->project->team, $deployment->project]) }}">
                                 {{ $deployment->project->name }}
                                 ({{ route('api.deployment.store', $deployment->project->deploy_endpoint) }})
                             </a>
