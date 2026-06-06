@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Server;
-use App\Models\Team;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,9 +10,9 @@ use Inertia\Response;
 
 class ServerController extends Controller
 {
-    public function index(Request $request, Team $team): Response
+    public function index(Request $request): Response
     {
-        $this->authorize('view', $team);
+        $team = $this->currentTeam($request);
 
         return Inertia::render('Server/Index', [
             'team' => $team,
@@ -21,29 +20,26 @@ class ServerController extends Controller
         ]);
     }
 
-    public function show(Request $request, Team $team, Server $server): Response
+    public function show(Request $request, Server $server): Response
     {
-        $this->authorize('view', $team);
+        $this->ensureOwnedByCurrentTeam($request, $server->team_id);
 
         return Inertia::render('Server/Show', [
-            'team' => $team,
             'server' => $server,
             'isSetUp' => $server->isSetUp(),
         ]);
     }
 
-    public function create(Request $request, Team $team): Response
+    public function create(Request $request): Response
     {
-        $this->authorize('view', $team);
+        $this->currentTeam($request);
 
-        return Inertia::render('Server/Create', [
-            'team' => $team,
-        ]);
+        return Inertia::render('Server/Create');
     }
 
-    public function store(Request $request, Team $team): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $this->authorize('view', $team);
+        $team = $this->currentTeam($request);
 
         $validated = $request->validate([
             'name' => 'required',
@@ -54,6 +50,6 @@ class ServerController extends Controller
 
         $server = $team->servers()->create($validated);
 
-        return redirect()->route('server.show', [$team, $server]);
+        return redirect()->route('server.show', $server);
     }
 }

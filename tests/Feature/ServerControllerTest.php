@@ -14,16 +14,12 @@ class ServerControllerTest extends TestCase
     use RefreshDatabase;
 
     #[Test]
-    public function a_teams_servers_can_be_shown()
+    public function the_current_teams_servers_can_be_shown()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
+        $server = Server::factory()->create(['team_id' => $user->currentTeam->id]);
 
-        $server = Server::factory()->create([
-            'team_id' => $team->id,
-        ]);
-
-        $this->actingAs($user)->get(route('server.index', $team))
+        $this->actingAs($user)->get(route('server.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Server/Index')
@@ -36,9 +32,8 @@ class ServerControllerTest extends TestCase
     public function a_server_has_a_create_view()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
 
-        $this->actingAs($user)->get(route('server.create', $team))
+        $this->actingAs($user)->get(route('server.create'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Server/Create'));
     }
@@ -47,20 +42,15 @@ class ServerControllerTest extends TestCase
     public function a_server_can_be_created()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
+        $server = Server::factory()->make();
 
-        $server = Server::factory()->make([
-            'team_id' => $team->id,
-        ]);
-
-        $this->actingAs($user)->post(route('server.store', $team), $server->toArray())
+        $this->actingAs($user)->post(route('server.store'), $server->toArray())
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('servers', [
+            'team_id' => $user->currentTeam->id,
             'name' => $server->name,
-            'user' => $server->user,
             'ip' => $server->ip,
-            'port' => $server->port,
         ]);
     }
 }

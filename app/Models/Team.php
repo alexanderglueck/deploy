@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUlid;
 use Database\Factories\TeamFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,8 @@ class Team extends JetstreamTeam
 {
     /** @use HasFactory<TeamFactory> */
     use HasFactory;
+
+    use HasPublicUlid;
 
     /**
      * The attributes that are mass assignable.

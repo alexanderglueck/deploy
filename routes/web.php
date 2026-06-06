@@ -19,32 +19,32 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
-    Route::post('/deploy/{project:deploy_endpoint}', [DeploymentController::class, 'store'])->name('deployment.store');
+    // Everything below is scoped to the user's *current* team (Jetstream tracks one
+    // active team per session). All models bind by their public ULID; controllers
+    // verify each resource belongs to the current team.
+    Route::get('/team', [TeamController::class, 'show'])->name('team.show');
 
-    // Team-scoped resources. scopeBindings() forces every nested {server}/{project}/
-    // {workflow} to belong to its parent (404 otherwise); each controller additionally
-    // authorizes that the current user is a member of {team} (403 otherwise).
+    Route::get('/servers', [ServerController::class, 'index'])->name('server.index');
+    Route::get('/servers/create', [ServerController::class, 'create'])->name('server.create');
+    Route::post('/servers', [ServerController::class, 'store'])->name('server.store');
+    Route::get('/servers/{server}', [ServerController::class, 'show'])->name('server.show');
+    Route::post('/servers/{server}/setup', [ServerSetupController::class, 'store'])->name('server.setup.store');
+
+    Route::get('/projects/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::post('/projects', [ProjectController::class, 'store'])->name('project.store');
+    Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('project.show');
+
+    // scopeBindings() forces the nested {workflow}/{deployment} to belong to {project}.
     Route::scopeBindings()->group(function () {
-        // Deploy's per-team overview (servers + projects). Jetstream owns /teams/{team}
-        // for team settings, so the deploy overview lives under /overview.
-        Route::get('/teams/{team}/overview', [TeamController::class, 'show'])->name('team.show');
+        Route::get('/projects/{project}/workflows/create', [WorkflowController::class, 'create'])->name('workflow.create');
+        Route::post('/projects/{project}/workflows', [WorkflowController::class, 'store'])->name('workflow.store');
+        Route::get('/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'show'])->name('workflow.show');
+        Route::delete('/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'destroy'])->name('workflow.destroy');
+        Route::get('/projects/{project}/workflows/{workflow}/edit', [WorkflowController::class, 'edit'])->name('workflow.edit');
+        Route::put('/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'update'])->name('workflow.update');
 
-        Route::get('/teams/{team}/servers', [ServerController::class, 'index'])->name('server.index');
-        Route::get('/teams/{team}/servers/create', [ServerController::class, 'create'])->name('server.create');
-        Route::post('/teams/{team}/servers', [ServerController::class, 'store'])->name('server.store');
-        Route::get('/teams/{team}/servers/{server}', [ServerController::class, 'show'])->name('server.show');
-        Route::post('/teams/{team}/servers/{server}/setup', [ServerSetupController::class, 'store'])->name('server.setup.store');
-
-        Route::get('/teams/{team}/projects/create', [ProjectController::class, 'create'])->name('project.create');
-        Route::post('/teams/{team}/projects', [ProjectController::class, 'store'])->name('project.store');
-        Route::get('/teams/{team}/projects/{project}', [ProjectController::class, 'show'])->name('project.show');
-        Route::post('/teams/{team}/projects/{project}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployment.cancel');
-
-        Route::get('/teams/{team}/projects/{project}/workflows/create', [WorkflowController::class, 'create'])->name('workflow.create');
-        Route::post('/teams/{team}/projects/{project}/workflows', [WorkflowController::class, 'store'])->name('workflow.store');
-        Route::get('/teams/{team}/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'show'])->name('workflow.show');
-        Route::delete('/teams/{team}/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'destroy'])->name('workflow.destroy');
-        Route::get('/teams/{team}/projects/{project}/workflows/{workflow}/edit', [WorkflowController::class, 'edit'])->name('workflow.edit');
-        Route::put('/teams/{team}/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'update'])->name('workflow.update');
+        Route::post('/projects/{project}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployment.cancel');
     });
+
+    Route::post('/deploy/{project:deploy_endpoint}', [DeploymentController::class, 'store'])->name('deployment.store');
 });

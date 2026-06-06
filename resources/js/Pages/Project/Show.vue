@@ -9,7 +9,6 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 const props = defineProps({
-    team: Object,
     project: Object,
     workflows: Array,
     deployments: Array,
@@ -33,7 +32,7 @@ const confirmWorkflowDeletion = (workflow) => {
 };
 
 const deleteWorkflow = () => {
-    deleteForm.delete(route('workflow.destroy', [props.team, props.project, workflowPendingDeletion.value]), {
+    deleteForm.delete(route('workflow.destroy', [props.project, workflowPendingDeletion.value]), {
         preserveScroll: true,
         onSuccess: () => (workflowPendingDeletion.value = null),
     });
@@ -44,18 +43,12 @@ const confirmCancellation = (deployment) => {
 };
 
 const cancelDeployment = () => {
-    cancelForm.post(route('deployment.cancel', [props.team, props.project, deploymentPendingCancellation.value]), {
+    cancelForm.post(route('deployment.cancel', [props.project, deploymentPendingCancellation.value]), {
         preserveScroll: true,
         onSuccess: () => (deploymentPendingCancellation.value = null),
     });
 };
 
-/*
- | Auto-refreshing logs: while any deployment is still queued or running we
- | poll the server every few seconds, reloading only the `deployments` prop
- | (which carries the live log). Polling stops automatically once everything
- | has finished, so idle pages make no requests.
- */
 const STATUS_META = {
     pending: { label: 'Pending', class: 'bg-gray-100 text-gray-600', active: true },
     deploying: { label: 'Deploying', class: 'bg-blue-100 text-blue-700', active: true },
@@ -105,7 +98,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                             <span class="text-gray-400 text-sm"> ({{ deployUrl }})</span>
                         </div>
                         <Link
-                            :href="route('workflow.create', [team, project])"
+                            :href="route('workflow.create', project)"
                             class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 transition"
                         >
                             Create workflow
@@ -113,7 +106,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                     </div>
 
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="(workflow, index) in workflows" :key="workflow.id" class="px-4 py-4">
+                        <li v-for="(workflow, index) in workflows" :key="workflow.ulid" class="px-4 py-4">
                             <details>
                                 <summary class="cursor-pointer font-medium text-gray-800">
                                     Workflow {{ index + 1 }} on {{ workflow.server.name }}
@@ -121,7 +114,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 <pre class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ workflow.actions }}</samp></pre>
                                 <div class="mt-3 flex items-center gap-2">
                                     <Link
-                                        :href="route('workflow.edit', [team, project, workflow])"
+                                        :href="route('workflow.edit', [project, workflow])"
                                         class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition"
                                     >
                                         Edit
@@ -145,7 +138,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                         Deployments
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="deployment in deployments" :key="deployment.id" class="px-4 py-4">
+                        <li v-for="deployment in deployments" :key="deployment.ulid" class="px-4 py-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <span
@@ -158,7 +151,6 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         />
                                         {{ STATUS_META[deployment.status].label }}
                                     </span>
-                                    <span class="text-sm text-gray-500">#{{ deployment.id }}</span>
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs text-gray-400">{{ fmt(deployment.received_at) }}</span>
@@ -180,7 +172,6 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 <div><dt class="inline font-medium">Canceled:</dt> {{ fmt(deployment.canceled_at) }}</div>
                             </dl>
 
-                            <!-- Live log: always visible for active deployments, collapsible otherwise -->
                             <div v-if="isActive(deployment)" class="mt-3">
                                 <div class="mb-1 text-xs font-medium text-gray-500">Live log</div>
                                 <LogOutput
@@ -236,9 +227,8 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                 Cancel deployment
             </template>
             <template #content>
-                Cancel deployment #{{ deploymentPendingCancellation?.id }}? A queued deployment
-                will not run; one that is already in progress is marked canceled but can't be
-                interrupted mid-run.
+                Cancel this deployment? A queued deployment will not run; one that is already
+                in progress is marked canceled but can't be interrupted mid-run.
             </template>
             <template #footer>
                 <SecondaryButton @click="deploymentPendingCancellation = null">

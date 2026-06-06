@@ -6,10 +6,6 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 
-const props = defineProps({
-    team: Object,
-});
-
 const form = useForm({
     name: '',
     user: 'root',
@@ -18,7 +14,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('server.store', props.team));
+    form.post(route('server.store'));
 };
 </script>
 

@@ -11,18 +11,18 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Guards against cross-tenant data exposure: a user must never be able to read
- * or modify another team's servers, projects, workflows or deployments by
- * manipulating IDs in the URL.
+ * Everything is scoped to the user's current team. A user must never be able to
+ * read or modify another team's resources by guessing ULIDs — the response must
+ * be 404 (we never even confirm the resource exists).
  */
 class TeamAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function userWithData(): array
+    private function victimData(): array
     {
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->currentTeam;
         $project = Project::factory()->create(['team_id' => $team->id]);
         $server = Server::factory()->create(['team_id' => $team->id]);
         $workflow = Workflow::factory()->create([
@@ -30,79 +30,44 @@ class TeamAuthorizationTest extends TestCase
             'server_id' => $server->id,
         ]);
 
-        return compact('user', 'team', 'project', 'server', 'workflow');
-    }
-
-    #[Test]
-    public function a_user_cannot_view_another_teams_overview()
-    {
-        $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
-
-        $this->actingAs($outsider)
-            ->get(route('team.show', $victim['team']))
-            ->assertForbidden();
-    }
-
-    #[Test]
-    public function a_user_cannot_list_another_teams_servers()
-    {
-        $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
-
-        $this->actingAs($outsider)
-            ->get(route('server.index', $victim['team']))
-            ->assertForbidden();
-    }
-
-    #[Test]
-    public function a_user_cannot_view_another_teams_server()
-    {
-        $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
-
-        $this->actingAs($outsider)
-            ->get(route('server.show', [$victim['team'], $victim['server']]))
-            ->assertForbidden();
+        return compact('owner', 'team', 'project', 'server', 'workflow');
     }
 
     #[Test]
     public function a_user_cannot_view_another_teams_project()
     {
         $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
+        $victim = $this->victimData();
 
         $this->actingAs($outsider)
-            ->get(route('project.show', [$victim['team'], $victim['project']]))
-            ->assertForbidden();
+            ->get(route('project.show', $victim['project']))
+            ->assertNotFound();
     }
 
     #[Test]
-    public function a_user_cannot_create_a_project_for_another_team()
+    public function a_user_cannot_view_another_teams_server()
     {
         $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
+        $victim = $this->victimData();
 
         $this->actingAs($outsider)
-            ->post(route('project.store', $victim['team']), ['name' => 'Hijack'])
-            ->assertForbidden();
-
-        $this->assertDatabaseMissing('projects', ['name' => 'Hijack']);
+            ->get(route('server.show', $victim['server']))
+            ->assertNotFound();
     }
 
     #[Test]
     public function a_user_cannot_view_or_delete_another_teams_workflow()
     {
         $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
+        $victim = $this->victimData();
 
         $this->actingAs($outsider)
-            ->get(route('workflow.show', [$victim['team'], $victim['project'], $victim['workflow']]))
-            ->assertForbidden();
+            ->get(route('workflow.show', [$victim['project'], $victim['workflow']]))
+            ->assertNotFound();
 
         $this->actingAs($outsider)
-            ->delete(route('workflow.destroy', [$victim['team'], $victim['project'], $victim['workflow']]))
-            ->assertForbidden();
+            ->delete(route('workflow.destroy', [$victim['project'], $victim['workflow']]))
+            ->assertNotFound();
 
         $this->assertDatabaseHas('workflows', ['id' => $victim['workflow']->id]);
     }
@@ -111,40 +76,40 @@ class TeamAuthorizationTest extends TestCase
     public function a_user_cannot_deploy_another_teams_project()
     {
         $outsider = User::factory()->withPersonalTeam()->create();
-        $victim = $this->userWithData();
+        $victim = $this->victimData();
 
         $this->actingAs($outsider)
             ->post(route('deployment.store', $victim['project']->deploy_endpoint))
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->assertDatabaseCount('deployments', 0);
     }
 
     #[Test]
-    public function scoped_bindings_reject_a_project_from_another_team()
+    public function scoped_bindings_reject_a_workflow_from_another_project()
     {
-        // The outsider owns their own team but references the victim's project
-        // nested under their own team id — the scoped binding must 404.
-        $outsider = User::factory()->withPersonalTeam()->create();
-        $ownTeam = $outsider->ownedTeams()->first();
-        $victim = $this->userWithData();
+        $user = User::factory()->withPersonalTeam()->create();
+        $ownProject = Project::factory()->create(['team_id' => $user->currentTeam->id]);
 
-        $this->actingAs($outsider)
-            ->get(route('project.show', [$ownTeam, $victim['project']]))
+        $victim = $this->victimData();
+
+        // The victim's workflow nested under the user's own project must 404.
+        $this->actingAs($user)
+            ->get(route('workflow.show', [$ownProject, $victim['workflow']]))
             ->assertNotFound();
     }
 
     #[Test]
-    public function a_team_member_can_access_their_own_team()
+    public function a_member_can_access_their_own_teams_resources()
     {
-        $owner = $this->userWithData();
+        $owner = $this->victimData();
 
-        $this->actingAs($owner['user'])
-            ->get(route('team.show', $owner['team']))
+        $this->actingAs($owner['owner'])
+            ->get(route('project.show', $owner['project']))
             ->assertOk();
 
-        $this->actingAs($owner['user'])
-            ->get(route('project.show', [$owner['team'], $owner['project']]))
+        $this->actingAs($owner['owner'])
+            ->get(route('server.show', $owner['server']))
             ->assertOk();
     }
 }

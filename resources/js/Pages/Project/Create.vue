@@ -6,16 +6,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 
-const props = defineProps({
-    team: Object,
-});
-
 const form = useForm({
     name: '',
 });
 
 const submit = () => {
-    form.post(route('project.store', props.team));
+    form.post(route('project.store'));
 };
 </script>
 

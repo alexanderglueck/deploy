@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Team;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TeamController extends Controller
 {
-    public function show(Request $request, Team $team): Response
+    public function show(Request $request): Response
     {
-        $this->authorize('view', $team);
+        $team = $this->currentTeam($request);
 
         return Inertia::render('Team/Show', [
             'team' => $team,

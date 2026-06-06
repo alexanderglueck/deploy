@@ -3,7 +3,6 @@ import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 defineProps({
-    team: Object,
     project: Object,
     workflow: Object,
     eventLabel: String,
@@ -11,14 +10,14 @@ defineProps({
 </script>
 
 <template>
-    <AppLayout :title="`Workflow ${workflow.id}`">
+    <AppLayout :title="`Workflow ${workflow.ulid}`">
         <template #header>
             <div class="flex items-center justify-between">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    {{ project.name }} — Workflow #{{ workflow.id }}
+                    {{ project.name }} — Workflow
                 </h2>
                 <Link
-                    :href="route('workflow.edit', [team, project, workflow])"
+                    :href="route('workflow.edit', [project, workflow])"
                     class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition"
                 >
                     Edit
@@ -41,7 +40,7 @@ defineProps({
                         <dd class="col-span-2 text-gray-800">
                             <Link
                                 v-if="workflow.server"
-                                :href="route('server.show', [team, workflow.server])"
+                                :href="route('server.show', workflow.server)"
                                 class="text-indigo-600 hover:underline"
                             >
                                 {{ workflow.server.name }}
@@ -65,7 +64,7 @@ defineProps({
                 </div>
 
                 <div>
-                    <Link :href="route('project.show', [team, project])" class="text-sm text-gray-500 hover:underline">
+                    <Link :href="route('project.show', project)" class="text-sm text-gray-500 hover:underline">
                         &larr; Back to {{ project.name }}
                     </Link>
                 </div>

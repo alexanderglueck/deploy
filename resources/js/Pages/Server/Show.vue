@@ -7,7 +7,6 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
-    team: Object,
     server: Object,
     isSetUp: Boolean,
 });
@@ -17,7 +16,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('server.setup.store', [props.team, props.server]), {
+    form.post(route('server.setup.store', props.server), {
         onFinish: () => form.reset('password'),
     });
 };
@@ -27,7 +26,7 @@ const submit = () => {
     <AppLayout :title="server.name">
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ team.name }} — Servers — {{ server.name }}
+                Servers — {{ server.name }}
             </h2>
         </template>
 

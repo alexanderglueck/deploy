@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUlid;
 use App\SSH\Connection;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Server extends Model
 {
     use HasFactory;
+    use HasPublicUlid;
 
     protected $fillable = [
         'name',
@@ -24,6 +26,14 @@ class Server extends Model
     protected $attributes = [
         'user' => 'root',
         'port' => 22,
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'id',
+        'team_id',
     ];
 
     /**

@@ -6,7 +6,6 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 const props = defineProps({
-    team: Object,
     project: Object,
     servers: Array,
     workflow: Object,
@@ -15,12 +14,12 @@ const props = defineProps({
 
 const form = useForm({
     event: props.workflow.event,
-    server_id: props.workflow.server_id,
+    server: props.workflow.server?.ulid,
     actions: props.workflow.actions,
 });
 
 const submit = () => {
-    form.put(route('workflow.update', [props.team, props.project, props.workflow]));
+    form.put(route('workflow.update', [props.project, props.workflow]));
 };
 
 const fieldClass = 'mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm';
@@ -49,13 +48,13 @@ const fieldClass = 'mt-1 block w-full border-gray-300 focus:border-indigo-500 fo
                         </div>
 
                         <div>
-                            <InputLabel for="server_id" value="Server" />
-                            <select id="server_id" v-model="form.server_id" :class="fieldClass" required>
-                                <option v-for="server in servers" :key="server.id" :value="server.id">
+                            <InputLabel for="server" value="Server" />
+                            <select id="server" v-model="form.server" :class="fieldClass" required>
+                                <option v-for="server in servers" :key="server.ulid" :value="server.ulid">
                                     {{ server.name }}
                                 </option>
                             </select>
-                            <InputError :message="form.errors.server_id" class="mt-2" />
+                            <InputError :message="form.errors.server" class="mt-2" />
                         </div>
 
                         <div>

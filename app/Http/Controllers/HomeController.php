@@ -10,38 +10,36 @@ use Inertia\Response;
 class HomeController extends Controller
 {
     /**
-     * Show the application dashboard.
+     * Show the dashboard for the user's current team.
      */
     public function index(Request $request): Response
     {
-        $teams = $request->user()->allTeams()->load('projects');
+        $team = $this->currentTeam($request);
 
-        $projectIds = $teams->flatMap(function ($team) {
-            return $team->projects->pluck('id');
-        });
+        $projectIds = $team->projects()->pluck('id');
 
         $recentDeployments = Deployment::query()
             ->whereIn('project_id', $projectIds)
             ->whereNull('canceled_at')
             ->whereNotNull('deployed_at')
-            ->with('project.team')
+            ->with('project')
             ->latest()
             ->limit(5)
             ->get();
 
-        // In-progress = queued (pending) or running, i.e. not yet finished and
-        // not canceled. Matches the "active" definition on the project page.
+        // In-progress = queued or running (not yet finished, not canceled).
         $currentDeployments = Deployment::query()
             ->whereIn('project_id', $projectIds)
             ->whereNull('canceled_at')
             ->whereNull('deployed_at')
-            ->with('project.team')
+            ->with('project')
             ->latest()
             ->limit(5)
             ->get();
 
         return Inertia::render('Dashboard', [
-            'teams' => $teams,
+            'team' => $team,
+            'projects' => $team->projects,
             'recentDeployments' => $recentDeployments,
             'currentDeployments' => $currentDeployments,
         ]);

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
-use App\Models\Team;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,30 +10,27 @@ use Inertia\Response;
 
 class ProjectController extends Controller
 {
-    public function show(Request $request, Team $team, Project $project): Response
+    public function show(Request $request, Project $project): Response
     {
-        $this->authorize('view', $team);
+        $this->ensureOwnedByCurrentTeam($request, $project->team_id);
 
         return Inertia::render('Project/Show', [
-            'team' => $team,
             'project' => $project,
             'workflows' => $project->workflows()->with('server')->get(),
             'deployments' => $project->deployments()->with('log')->get(),
         ]);
     }
 
-    public function create(Request $request, Team $team): Response
+    public function create(Request $request): Response
     {
-        $this->authorize('view', $team);
+        $this->currentTeam($request);
 
-        return Inertia::render('Project/Create', [
-            'team' => $team,
-        ]);
+        return Inertia::render('Project/Create');
     }
 
-    public function store(Request $request, Team $team): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $this->authorize('view', $team);
+        $team = $this->currentTeam($request);
 
         $validated = $request->validate([
             'name' => 'required',
@@ -42,6 +38,6 @@ class ProjectController extends Controller
 
         $team->projects()->create($validated);
 
-        return redirect()->route('team.show', [$team]);
+        return redirect()->route('team.show');
     }
 }

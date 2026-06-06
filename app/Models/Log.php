@@ -16,6 +16,14 @@ class Log extends Model
     ];
 
     /**
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'id',
+        'deployment_id',
+    ];
+
+    /**
      * @return BelongsTo
      */
     public function deployment()

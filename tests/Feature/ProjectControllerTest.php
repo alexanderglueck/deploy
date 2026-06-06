@@ -17,13 +17,9 @@ class ProjectControllerTest extends TestCase
     public function a_project_can_be_shown()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
+        $project = Project::factory()->create(['team_id' => $user->currentTeam->id]);
 
-        $project = Project::factory()->create([
-            'team_id' => $team->id,
-        ]);
-
-        $this->actingAs($user)->get(route('project.show', [$team, $project]))
+        $this->actingAs($user)->get(route('project.show', $project))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Project/Show')
@@ -35,9 +31,8 @@ class ProjectControllerTest extends TestCase
     public function a_project_has_a_create_view()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
 
-        $this->actingAs($user)->get(route('project.create', $team))
+        $this->actingAs($user)->get(route('project.create'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Project/Create'));
     }
@@ -46,16 +41,13 @@ class ProjectControllerTest extends TestCase
     public function a_project_can_be_created()
     {
         $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
+        $project = Project::factory()->make();
 
-        $project = Project::factory()->make([
-            'team_id' => $team->id,
-        ]);
-
-        $this->actingAs($user)->post(route('project.store', $team), $project->toArray())
-            ->assertRedirect(route('team.show', $team));
+        $this->actingAs($user)->post(route('project.store'), ['name' => $project->name])
+            ->assertRedirect(route('team.show'));
 
         $this->assertDatabaseHas('projects', [
+            'team_id' => $user->currentTeam->id,
             'name' => $project->name,
         ]);
     }

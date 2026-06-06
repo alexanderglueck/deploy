@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUlid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,9 +12,21 @@ use Illuminate\Support\Str;
 class Project extends Model
 {
     use HasFactory;
+    use HasPublicUlid;
 
     protected $fillable = [
         'name',
+        'team_id',
+    ];
+
+    /**
+     * Internal identifiers are never exposed to the front-end; the public
+     * `ulid` is used instead.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'id',
         'team_id',
     ];
 

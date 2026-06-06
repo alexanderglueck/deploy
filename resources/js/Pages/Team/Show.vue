@@ -26,15 +26,15 @@ const deployUrl = (endpoint) => route('api.deployment.store', endpoint);
                     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                         <span class="font-medium text-gray-700">Servers</span>
                         <Link
-                            :href="route('server.create', team)"
+                            :href="route('server.create')"
                             class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 transition"
                         >
                             Create server
                         </Link>
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="server in servers" :key="server.id">
-                            <Link :href="route('server.show', [team, server])" class="block px-4 py-3 hover:bg-gray-50 text-gray-800">
+                        <li v-for="server in servers" :key="server.ulid">
+                            <Link :href="route('server.show', server)" class="block px-4 py-3 hover:bg-gray-50 text-gray-800">
                                 {{ server.name }}
                             </Link>
                         </li>
@@ -47,15 +47,15 @@ const deployUrl = (endpoint) => route('api.deployment.store', endpoint);
                     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                         <span class="font-medium text-gray-700">Projects</span>
                         <Link
-                            :href="route('project.create', team)"
+                            :href="route('project.create')"
                             class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 transition"
                         >
                             Create project
                         </Link>
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="project in projects" :key="project.id">
-                            <Link :href="route('project.show', [team, project])" class="block px-4 py-3 hover:bg-gray-50">
+                        <li v-for="project in projects" :key="project.ulid">
+                            <Link :href="route('project.show', project)" class="block px-4 py-3 hover:bg-gray-50">
                                 <span class="font-medium text-gray-800">{{ project.name }}</span>
                                 <span class="text-gray-400 text-sm"> ({{ deployUrl(project.deploy_endpoint) }})</span>
                             </Link>

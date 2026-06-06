@@ -4,7 +4,8 @@ import { Link, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
-    teams: Array,
+    team: Object,
+    projects: Array,
     recentDeployments: Array,
     currentDeployments: Array,
 });
@@ -29,7 +30,7 @@ watch(hasCurrent, (active) => {
     <AppLayout title="Dashboard">
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Dashboard
+                {{ team.name }} — Dashboard
             </h2>
         </template>
 
@@ -48,11 +49,8 @@ watch(hasCurrent, (active) => {
                         </span>
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="deployment in currentDeployments" :key="deployment.id">
-                            <Link
-                                :href="route('project.show', [deployment.project.team, deployment.project])"
-                                class="block px-4 py-3 hover:bg-gray-50"
-                            >
+                        <li v-for="deployment in currentDeployments" :key="deployment.ulid">
+                            <Link :href="route('project.show', deployment.project)" class="block px-4 py-3 hover:bg-gray-50">
                                 <span class="font-medium text-gray-800">{{ deployment.project.name }}</span>
                                 <span class="text-gray-400 text-sm"> ({{ deployUrl(deployment.project.deploy_endpoint) }})</span>
                             </Link>
@@ -69,11 +67,8 @@ watch(hasCurrent, (active) => {
                         Recent deployments
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="deployment in recentDeployments" :key="deployment.id">
-                            <Link
-                                :href="route('project.show', [deployment.project.team, deployment.project])"
-                                class="block px-4 py-3 hover:bg-gray-50"
-                            >
+                        <li v-for="deployment in recentDeployments" :key="deployment.ulid">
+                            <Link :href="route('project.show', deployment.project)" class="block px-4 py-3 hover:bg-gray-50">
                                 <span class="font-medium text-gray-800">{{ deployment.project.name }}</span>
                                 <span class="text-gray-400 text-sm"> ({{ deployUrl(deployment.project.deploy_endpoint) }})</span>
                             </Link>
@@ -84,26 +79,25 @@ watch(hasCurrent, (active) => {
                     </ul>
                 </div>
 
-                <!-- Teams -->
-                <div v-for="team in teams" :key="team.id" class="bg-white shadow sm:rounded-lg">
-                    <div class="px-4 py-3 border-b border-gray-200 font-medium text-gray-700">
-                        <Link :href="route('team.show', team)" class="hover:underline">
-                            {{ team.name }}
+                <!-- Projects -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                        <span class="font-medium text-gray-700">Projects</span>
+                        <Link
+                            :href="route('project.create')"
+                            class="inline-flex items-center px-3 py-1.5 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 transition"
+                        >
+                            Create project
                         </Link>
                     </div>
                     <ul class="divide-y divide-gray-100">
-                        <li v-for="project in team.projects" :key="project.id">
-                            <Link
-                                :href="route('project.show', [team, project])"
-                                class="block px-4 py-3 hover:bg-gray-50"
-                            >
+                        <li v-for="project in projects" :key="project.ulid">
+                            <Link :href="route('project.show', project)" class="block px-4 py-3 hover:bg-gray-50">
                                 <span class="font-medium text-gray-800">{{ project.name }}</span>
                                 <span class="text-gray-400 text-sm"> ({{ deployUrl(project.deploy_endpoint) }})</span>
                             </Link>
                         </li>
-                        <li v-if="!team.projects.length" class="px-4 py-3 text-sm text-gray-400">
-                            No projects yet.
-                        </li>
+                        <li v-if="!projects.length" class="px-4 py-3 text-sm text-gray-400">No projects yet.</li>
                     </ul>
                 </div>
             </div>
