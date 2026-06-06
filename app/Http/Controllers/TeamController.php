@@ -11,6 +11,8 @@ class TeamController extends Controller
 {
     public function show(Request $request, Team $team): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Team/Show', [
             'team' => $team,
             'servers' => $team->servers,

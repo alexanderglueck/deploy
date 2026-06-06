@@ -15,6 +15,8 @@ class WorkflowController extends Controller
 {
     public function show(Request $request, Team $team, Project $project, Workflow $workflow): Response
     {
+        $this->authorize('view', $team);
+
         $workflow->load('server');
 
         return Inertia::render('Workflow/Show', [
@@ -27,6 +29,8 @@ class WorkflowController extends Controller
 
     public function create(Request $request, Team $team, Project $project): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Workflow/Create', [
             'team' => $team,
             'project' => $project,
@@ -37,6 +41,8 @@ class WorkflowController extends Controller
 
     public function store(Request $request, Team $team, Project $project): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $validated = $request->validate([
             'event' => 'required',
             'actions' => 'required',
@@ -50,6 +56,8 @@ class WorkflowController extends Controller
 
     public function destroy(Request $request, Team $team, Project $project, Workflow $workflow): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $workflow->delete();
 
         return redirect()->route('project.show', [$team, $project]);
@@ -57,6 +65,8 @@ class WorkflowController extends Controller
 
     public function edit(Request $request, Team $team, Project $project, Workflow $workflow): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Workflow/Edit', [
             'team' => $team,
             'project' => $project,
@@ -68,6 +78,8 @@ class WorkflowController extends Controller
 
     public function update(Request $request, Team $team, Project $project, Workflow $workflow): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $validated = $request->validate([
             'event' => 'required',
             'actions' => 'required',

@@ -12,6 +12,8 @@ class ServerSetupController extends Controller
 {
     public function store(Request $request, Team $team, Server $server): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $request->validate([
             'password' => 'required',
         ]);

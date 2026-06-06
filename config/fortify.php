@@ -161,8 +161,11 @@ return [
     |
     */
 
-    'features' => [
-        Features::registration(),
+    'features' => array_values(array_filter([
+        // Self-service registration. Disabled for private deployments by setting
+        // REGISTRATION_ENABLED=false — Fortify then drops the /register routes
+        // entirely (so they 404) and the "Register" link disappears from the UI.
+        env('REGISTRATION_ENABLED', true) ? Features::registration() : null,
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::updateProfileInformation(),
@@ -175,6 +178,6 @@ return [
         Features::passkeys([
             'confirmPassword' => true,
         ]),
-    ],
+    ])),
 
 ];

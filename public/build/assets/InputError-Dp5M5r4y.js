@@ -1,0 +1,1 @@
+import{B as e,E as t,N as n,d as r,g as i,y as a}from"./app-B94tHw19.js";var o={class:`text-sm text-red-600`},s={__name:`InputError`,props:{message:String},setup(s){return(c,l)=>n((t(),a(`div`,null,[i(`p`,o,e(s.message),1)],512)),[[r,s.message]])}};export{s as t};

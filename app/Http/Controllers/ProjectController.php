@@ -13,6 +13,8 @@ class ProjectController extends Controller
 {
     public function show(Request $request, Team $team, Project $project): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Project/Show', [
             'team' => $team,
             'project' => $project,
@@ -23,6 +25,8 @@ class ProjectController extends Controller
 
     public function create(Request $request, Team $team): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Project/Create', [
             'team' => $team,
         ]);
@@ -30,6 +34,8 @@ class ProjectController extends Controller
 
     public function store(Request $request, Team $team): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $validated = $request->validate([
             'name' => 'required',
         ]);

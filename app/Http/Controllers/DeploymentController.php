@@ -14,6 +14,8 @@ class DeploymentController extends Controller
 {
     public function store(Request $request, Project $project): RedirectResponse
     {
+        $this->authorize('view', $project->team);
+
         $data = [
             'project_id' => $project->id,
             'event' => Event::PUSH,

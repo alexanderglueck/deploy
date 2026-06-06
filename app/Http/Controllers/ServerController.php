@@ -13,6 +13,8 @@ class ServerController extends Controller
 {
     public function index(Request $request, Team $team): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Server/Index', [
             'team' => $team,
             'servers' => $team->servers,
@@ -21,6 +23,8 @@ class ServerController extends Controller
 
     public function show(Request $request, Team $team, Server $server): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Server/Show', [
             'team' => $team,
             'server' => $server,
@@ -30,6 +34,8 @@ class ServerController extends Controller
 
     public function create(Request $request, Team $team): Response
     {
+        $this->authorize('view', $team);
+
         return Inertia::render('Server/Create', [
             'team' => $team,
         ]);
@@ -37,6 +43,8 @@ class ServerController extends Controller
 
     public function store(Request $request, Team $team): RedirectResponse
     {
+        $this->authorize('view', $team);
+
         $validated = $request->validate([
             'name' => 'required',
             'user' => 'required',
