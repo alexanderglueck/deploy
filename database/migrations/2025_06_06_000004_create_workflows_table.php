@@ -13,6 +13,10 @@ class CreateWorkflowsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('workflows')) {
+            return;
+        }
+
         Schema::create('workflows', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('project_id');

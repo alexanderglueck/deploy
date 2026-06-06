@@ -13,6 +13,10 @@ class CreateServersTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('servers')) {
+            return;
+        }
+
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('team_id');

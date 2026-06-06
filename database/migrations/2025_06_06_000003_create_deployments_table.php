@@ -13,6 +13,10 @@ class CreateDeploymentsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('deployments')) {
+            return;
+        }
+
         Schema::create('deployments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('project_id');
