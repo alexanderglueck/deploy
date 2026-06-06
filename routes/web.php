@@ -38,6 +38,7 @@ Route::middleware([
         Route::get('/teams/{team}/projects/create', [ProjectController::class, 'create'])->name('project.create');
         Route::post('/teams/{team}/projects', [ProjectController::class, 'store'])->name('project.store');
         Route::get('/teams/{team}/projects/{project}', [ProjectController::class, 'show'])->name('project.show');
+        Route::post('/teams/{team}/projects/{project}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployment.cancel');
 
         Route::get('/teams/{team}/projects/{project}/workflows/create', [WorkflowController::class, 'create'])->name('workflow.create');
         Route::post('/teams/{team}/projects/{project}/workflows', [WorkflowController::class, 'store'])->name('workflow.store');

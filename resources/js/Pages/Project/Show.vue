@@ -19,8 +19,10 @@ const deployUrl = route('api.deployment.store', props.project.deploy_endpoint);
 
 const deployForm = useForm({});
 const deleteForm = useForm({});
+const cancelForm = useForm({});
 
 const workflowPendingDeletion = ref(null);
+const deploymentPendingCancellation = ref(null);
 
 const deploy = () => {
     deployForm.post(route('deployment.store', props.project), { preserveScroll: true });
@@ -34,6 +36,17 @@ const deleteWorkflow = () => {
     deleteForm.delete(route('workflow.destroy', [props.team, props.project, workflowPendingDeletion.value]), {
         preserveScroll: true,
         onSuccess: () => (workflowPendingDeletion.value = null),
+    });
+};
+
+const confirmCancellation = (deployment) => {
+    deploymentPendingCancellation.value = deployment;
+};
+
+const cancelDeployment = () => {
+    cancelForm.post(route('deployment.cancel', [props.team, props.project, deploymentPendingCancellation.value]), {
+        preserveScroll: true,
+        onSuccess: () => (deploymentPendingCancellation.value = null),
     });
 };
 
@@ -147,7 +160,17 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                     </span>
                                     <span class="text-sm text-gray-500">#{{ deployment.id }}</span>
                                 </div>
-                                <span class="text-xs text-gray-400">{{ fmt(deployment.received_at) }}</span>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs text-gray-400">{{ fmt(deployment.received_at) }}</span>
+                                    <button
+                                        v-if="isActive(deployment)"
+                                        type="button"
+                                        class="text-xs font-medium text-red-600 hover:text-red-500 hover:underline"
+                                        @click="confirmCancellation(deployment)"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
 
                             <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-500 sm:grid-cols-4">
@@ -203,6 +226,31 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                     @click="deleteWorkflow"
                 >
                     Delete
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <!-- Cancel deployment confirmation -->
+        <ConfirmationModal :show="deploymentPendingCancellation !== null" @close="deploymentPendingCancellation = null">
+            <template #title>
+                Cancel deployment
+            </template>
+            <template #content>
+                Cancel deployment #{{ deploymentPendingCancellation?.id }}? A queued deployment
+                will not run; one that is already in progress is marked canceled but can't be
+                interrupted mid-run.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="deploymentPendingCancellation = null">
+                    Keep
+                </SecondaryButton>
+                <DangerButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': cancelForm.processing }"
+                    :disabled="cancelForm.processing"
+                    @click="cancelDeployment"
+                >
+                    Cancel deployment
                 </DangerButton>
             </template>
         </ConfirmationModal>

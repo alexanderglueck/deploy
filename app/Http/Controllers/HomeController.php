@@ -29,10 +29,11 @@ class HomeController extends Controller
             ->limit(5)
             ->get();
 
+        // In-progress = queued (pending) or running, i.e. not yet finished and
+        // not canceled. Matches the "active" definition on the project page.
         $currentDeployments = Deployment::query()
             ->whereIn('project_id', $projectIds)
             ->whereNull('canceled_at')
-            ->whereNotNull('processed_at')
             ->whereNull('deployed_at')
             ->with('project.team')
             ->latest()

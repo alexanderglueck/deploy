@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\Server;
+use App\Models\User;
 use App\Models\Workflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
@@ -54,5 +55,63 @@ class DeploymentControllerTest extends TestCase
             ->assertSessionHas('errors');
 
         $this->assertCount(0, $project->deployments);
+    }
+
+    #[Test]
+    public function a_member_can_cancel_a_pending_deployment()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $project = Project::factory()->create(['team_id' => $team->id]);
+        $deployment = Deployment::factory()->create([
+            'project_id' => $project->id,
+            'received_at' => now(),
+        ]);
+
+        $this->assertSame('pending', $deployment->status);
+
+        $this->actingAs($user)
+            ->post(route('deployment.cancel', [$team, $project, $deployment]))
+            ->assertRedirect(route('project.show', [$team, $project]));
+
+        $this->assertNotNull($deployment->fresh()->canceled_at);
+        $this->assertSame('canceled', $deployment->fresh()->status);
+    }
+
+    #[Test]
+    public function a_finished_deployment_cannot_be_canceled()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $project = Project::factory()->create(['team_id' => $team->id]);
+        $deployment = Deployment::factory()->create([
+            'project_id' => $project->id,
+            'processed_at' => now(),
+            'deployed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('deployment.cancel', [$team, $project, $deployment]));
+
+        $this->assertNull($deployment->fresh()->canceled_at);
+    }
+
+    #[Test]
+    public function a_user_cannot_cancel_another_teams_deployment()
+    {
+        $outsider = User::factory()->withPersonalTeam()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->ownedTeams()->first();
+        $project = Project::factory()->create(['team_id' => $team->id]);
+        $deployment = Deployment::factory()->create([
+            'project_id' => $project->id,
+            'received_at' => now(),
+        ]);
+
+        $this->actingAs($outsider)
+            ->post(route('deployment.cancel', [$team, $project, $deployment]))
+            ->assertForbidden();
+
+        $this->assertNull($deployment->fresh()->canceled_at);
     }
 }
