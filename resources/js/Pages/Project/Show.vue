@@ -1,9 +1,10 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Link, useForm, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
+import LogOutput from '@/Components/LogOutput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 
@@ -57,26 +58,6 @@ const { start, stop } = usePoll(3000, { only: ['deployments'] }, { autoStart: fa
 watch(hasActiveDeployment, (active) => {
     active ? start() : stop();
 }, { immediate: true });
-
-// Keep the live log scrolled to the bottom as new output streams in.
-const logBoxes = {};
-const setLogBox = (el, id) => {
-    if (el) {
-        logBoxes[id] = el;
-    } else {
-        delete logBoxes[id];
-    }
-};
-
-watch(() => props.deployments, async () => {
-    await nextTick();
-    props.deployments.filter(isActive).forEach((deployment) => {
-        const el = logBoxes[deployment.id];
-        if (el) {
-            el.scrollTop = el.scrollHeight;
-        }
-    });
-}, { deep: true });
 
 const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
 </script>
@@ -179,10 +160,12 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                             <!-- Live log: always visible for active deployments, collapsible otherwise -->
                             <div v-if="isActive(deployment)" class="mt-3">
                                 <div class="mb-1 text-xs font-medium text-gray-500">Live log</div>
-                                <pre
-                                    :ref="(el) => setLogBox(el, deployment.id)"
-                                    class="text-gray-100 bg-gray-900 rounded p-3 overflow-auto text-sm max-h-72 whitespace-pre-wrap"
-                                ><samp>{{ deployment.log?.log || 'Waiting for output…' }}</samp></pre>
+                                <LogOutput
+                                    :content="deployment.log?.log"
+                                    placeholder="Waiting for output…"
+                                    max-height="max-h-72"
+                                    auto-scroll
+                                />
                             </div>
                             <template v-else>
                                 <details class="mt-2">
@@ -191,7 +174,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 </details>
                                 <details class="mt-2">
                                     <summary class="cursor-pointer text-sm text-gray-600">Log</summary>
-                                    <pre class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm whitespace-pre-wrap"><samp>{{ deployment.log?.log }}</samp></pre>
+                                    <LogOutput class="mt-2" :content="deployment.log?.log" />
                                 </details>
                             </template>
                         </li>
