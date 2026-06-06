@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Event;
-use App\Project;
-use App\Server;
-use App\Workflow;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\Workflow;
+use App\Support\Event;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,7 +29,7 @@ class WorkflowFactory extends Factory
             'project_id' => Project::factory(),
             'server_id' => Server::factory(),
             'event' => Event::PUSH,
-            'actions' => '#'
+            'actions' => '#',
         ];
     }
 

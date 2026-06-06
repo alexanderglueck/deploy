@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Deployment;
-use App\Log;
+use App\Models\Deployment;
+use App\Models\Log;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class LogFactory extends Factory
@@ -24,7 +24,7 @@ class LogFactory extends Factory
     {
         return [
             'deployment_id' => Deployment::factory(),
-            'log' => $this->faker->sentence
+            'log' => $this->faker->sentence,
         ];
     }
 }

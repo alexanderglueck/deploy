@@ -2,26 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Deployment;
-use App\Event;
 use App\Jobs\ProcessDeployments;
-use App\Project;
+use App\Models\Deployment;
+use App\Models\Project;
+use App\Support\Event;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ApiDeploymentController extends Controller
 {
-    /**
-     * @param Request $request
-     * @param Project $project
-     * @return string
-     */
-    public function store(Request $request, Project $project)
+    public function store(Request $request, Project $project): string
     {
         $validatedRequest = $request->validate([
             'event' => 'required',
             'ref' => 'required',
-            'repo' => 'required'
+            'repo' => 'required',
         ]);
 
         $data = [
@@ -29,7 +24,7 @@ class ApiDeploymentController extends Controller
             'event' => Event::getEvent($validatedRequest['event']),
             'ref' => $validatedRequest['ref'],
             'repository' => $validatedRequest['repo'],
-            'received_at' => Carbon::now()
+            'received_at' => Carbon::now(),
         ];
 
         // Cancel older pending deployments
@@ -38,18 +33,18 @@ class ApiDeploymentController extends Controller
                 'project_id' => $data['project_id'],
                 'ref' => $data['ref'],
                 'event' => $data['event'],
-                'repository' => $data['repository']
+                'repository' => $data['repository'],
             ])
             ->whereNull('processed_at')
             ->whereNull('deployed_at')
             ->whereNull('canceled_at')
             ->update([
-                'canceled_at' => Carbon::now()
+                'canceled_at' => Carbon::now(),
             ]);
 
         // Queue new pending deployment
         ProcessDeployments::dispatch(Deployment::create($data));
 
-        return "OK";
+        return 'OK';
     }
 }

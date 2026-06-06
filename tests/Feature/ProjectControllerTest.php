@@ -2,57 +2,61 @@
 
 namespace Tests\Feature;
 
-use App\Deployment;
-use App\Project;
-use App\User;
-use App\Workflow;
+use App\Models\Project;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ProjectControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_project_can_be_shown()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
 
         $project = Project::factory()->create([
-            'team_id' => $user->teams->first()->id
+            'team_id' => $team->id,
         ]);
 
-        $this->actingAs($user)->get(route('project.show', [$user->teams->first()->id, $project]))
-            ->assertSee($project->name)
-            ->assertOk();
+        $this->actingAs($user)->get(route('project.show', [$team, $project]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Project/Show')
+                ->where('project.name', $project->name)
+            );
     }
 
-    /** @test */
+    #[Test]
     public function a_project_has_a_create_view()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
 
-        $this->actingAs($user)->get(route('project.create', [$user->teams->first()->id]))
-            ->assertSee("Create")
-            ->assertOk();
+        $this->actingAs($user)->get(route('project.create', $team))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Project/Create'));
     }
 
-    /** @test */
+    #[Test]
     public function a_project_can_be_created()
     {
-        $user = User::factory()->create();
-
-        $teamId = $user->teams->first()->id;
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
 
         $project = Project::factory()->make([
-            'team_id' => $user->teams->first()->id
+            'team_id' => $team->id,
         ]);
 
-        $this->actingAs($user)->post(route('project.store', [$teamId]), $project->toArray())
-            ->assertRedirect(route('team.show', [$teamId]));
+        $this->actingAs($user)->post(route('project.store', $team), $project->toArray())
+            ->assertRedirect(route('team.show', $team));
 
         $this->assertDatabaseHas('projects', [
-            'name' => $project->name
+            'name' => $project->name,
         ]);
     }
 }

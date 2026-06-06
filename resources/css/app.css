@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/laravel/jetstream/**/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.vue';
+
+/*
+ | Tailwind v4 defaults `border-*` and `divide-*` to `currentColor` instead of
+ | the v3 `gray-200`. The published Jetstream components were written for v3,
+ | so we preserve the old default to keep their borders looking correct.
+ */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+[x-cloak] {
+    display: none;
+}

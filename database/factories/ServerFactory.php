@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Server;
-use App\Team;
+use App\Models\Server;
+use App\Models\Team;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -29,8 +29,7 @@ class ServerFactory extends Factory
             'ip' => $this->faker->ipv4,
             'port' => 22,
             'setup_at' => Carbon::now(),
-            'team_id' => Team::factory()
+            'team_id' => Team::factory(),
         ];
     }
 }
-

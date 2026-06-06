@@ -3,9 +3,9 @@
 namespace App\SSH;
 
 use Exception;
-use phpseclib\Crypt\RSA;
-use phpseclib\Net\SCP;
-use phpseclib\Net\SSH2;
+use phpseclib3\Crypt\PublicKeyLoader;
+use phpseclib3\Net\SCP;
+use phpseclib3\Net\SSH2;
 
 class Connection
 {
@@ -28,9 +28,10 @@ class Connection
 
     /**
      * Connection constructor.
-     * @param string $ip
-     * @param int $port
-     * @param string $user
+     *
+     * @param  string  $ip
+     * @param  int  $port
+     * @param  string  $user
      */
     public function __construct($ip, $port, $user)
     {
@@ -42,7 +43,7 @@ class Connection
     }
 
     /**
-     * @param string $pathToPrivateKey
+     * @param  string  $pathToPrivateKey
      * @return $this
      */
     public function usingPrivateKey($pathToPrivateKey)
@@ -53,7 +54,7 @@ class Connection
     }
 
     /**
-     * @param string $password
+     * @param  string  $password
      * @return $this
      */
     public function usingPassword($password)
@@ -65,30 +66,30 @@ class Connection
 
     /**
      * @return $this
+     *
      * @throws Exception
      */
     public function connect()
     {
         $this->connection = new SSH2($this->ip, $this->port, 300);
 
-        if ( ! $this->connection) {
+        if (! $this->connection) {
             throw new Exception('Could not connect to server.');
         }
 
-        if ( ! $this->password && ! $this->pathToPrivateKey) {
+        if (! $this->password && ! $this->pathToPrivateKey) {
             throw new Exception('No authentication method set. Call usingPassword or usingPrivateKey prior to calling connect.');
         }
 
         if ($this->password) {
-            if ( ! $this->connection->login($this->user, $this->password)) {
+            if (! $this->connection->login($this->user, $this->password)) {
                 throw new Exception('Could not login. Wrong password.');
             }
         }
 
         if ($this->pathToPrivateKey) {
-            $rsa = new RSA();
-            $rsa->loadKey(file_get_contents($this->pathToPrivateKey));
-            if ( ! $this->connection->login($this->user, $rsa)) {
+            $key = PublicKeyLoader::load(file_get_contents($this->pathToPrivateKey));
+            if (! $this->connection->login($this->user, $key)) {
                 throw new Exception('Could not login. No password provided. Is the server set up?');
             }
         }
@@ -96,9 +97,6 @@ class Connection
         return $this;
     }
 
-    /**
-     *
-     */
     public function disconnect()
     {
         $this->connection->disconnect();
@@ -107,8 +105,6 @@ class Connection
     }
 
     /**
-     * @param $localPath
-     * @param $remotePath
      * @return bool
      */
     public function upload($localPath, $remotePath)
@@ -125,8 +121,7 @@ class Connection
     }
 
     /**
-     * @param $command
-     * @param callable|null $callback
+     * @param  callable|null  $callback
      */
     public function run($command, $callback = null)
     {

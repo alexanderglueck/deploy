@@ -2,15 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Deployment;
+use App\Models\Deployment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class LogTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_log_belongs_to_a_deployment()
     {
         $deployment = Deployment::factory()->create();

@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Project;
-use App\Team;
+use App\Models\Project;
+use App\Models\Team;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProjectFactory extends Factory
@@ -25,7 +25,7 @@ class ProjectFactory extends Factory
         return [
             'name' => $this->faker->name,
             'deploy_endpoint' => $this->faker->unique()->md5,
-            'team_id' => Team::factory()
+            'team_id' => Team::factory(),
         ];
     }
 }

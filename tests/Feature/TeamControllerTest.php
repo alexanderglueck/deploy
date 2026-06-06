@@ -2,23 +2,28 @@
 
 namespace Tests\Feature;
 
-use App\User;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class TeamControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_team_can_be_shown()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPersonalTeam()->create();
 
-        $team = $user->teams()->first();
+        $team = $user->ownedTeams()->first();
 
         $this->actingAs($user)->get(route('team.show', $team))
-            ->assertSee($team->name)
-            ->assertOk();
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Team/Show')
+                ->where('team.name', $team->name)
+            );
     }
 }

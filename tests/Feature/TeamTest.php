@@ -2,86 +2,84 @@
 
 namespace Tests\Feature;
 
-use App\Project;
-use App\Server;
-use App\Team;
-use App\User;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class TeamTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_user_can_join_a_team()
     {
-        $user = User::factory()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
+        $member = User::factory()->create();
 
-        $team = Team::factory()->create();
+        $team = $owner->ownedTeams()->first();
 
-        $team->addMember($user);
+        $team->users()->attach($member, ['role' => 'admin']);
 
-        $this->assertCount(1, $team->members);
-
-        $this->assertCount(2, $user->teams);
+        $this->assertCount(1, $team->fresh()->users);
+        $this->assertCount(1, $member->fresh()->allTeams());
     }
 
-    /** @test */
+    #[Test]
     public function a_user_can_leave_a_team()
     {
-        $user = User::factory()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
+        $member = User::factory()->create();
 
-        $team = Team::factory()->create();
+        $team = $owner->ownedTeams()->first();
 
-        $team->addMember($user);
+        $team->users()->attach($member, ['role' => 'admin']);
+        $this->assertCount(1, $team->fresh()->users);
 
-        $this->assertCount(1, $team->members);
+        $team->users()->detach($member);
 
-        $team->removeMember($user);
-
-        $this->assertCount(0, $team->fresh()->members);
-
-        $this->assertCount(1, $user->teams);
+        $this->assertCount(0, $team->fresh()->users);
+        $this->assertCount(0, $member->fresh()->allTeams());
     }
 
-    /** @test */
+    #[Test]
     public function a_team_has_members()
     {
-        $user = User::factory()->create();
+        $owner = User::factory()->withPersonalTeam()->create();
+        $member = User::factory()->create();
 
-        $team = Team::factory()->create();
+        $team = $owner->ownedTeams()->first();
+        $team->users()->attach($member, ['role' => 'admin']);
 
-        $team->addMember($user);
-
-        $this->assertCount(1, $team->members);
+        $this->assertCount(1, $team->fresh()->users);
     }
 
-    /** @test */
+    #[Test]
     public function a_team_has_projects()
     {
         $team = Team::factory()->create();
 
         $project = Project::factory()->create([
-            'team_id' => $team->id
+            'team_id' => $team->id,
         ]);
 
         $this->assertCount(1, $team->projects);
         $this->assertEquals($project->id, $team->projects()->first()->id);
     }
 
-    /** @test */
+    #[Test]
     public function a_team_has_servers()
     {
         $team = Team::factory()->create();
 
         $server = Server::factory()->create([
-            'team_id' => $team->id
+            'team_id' => $team->id,
         ]);
 
         $this->assertCount(1, $team->servers);
         $this->assertEquals($server->id, $team->servers()->first()->id);
     }
-
 }

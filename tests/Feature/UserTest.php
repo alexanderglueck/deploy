@@ -2,38 +2,36 @@
 
 namespace Tests\Feature;
 
-use App\Project;
-use App\Team;
-use App\User;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class UserTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_user_belongs_to_many_teams()
     {
-        $teams = Team::factory()->count(2)->create();
+        $user = User::factory()->withPersonalTeam()->create();
 
-        $user = User::factory()->create();
+        $this->assertCount(1, $user->allTeams());
 
-        $this->assertCount(1, $user->teams);
+        Team::factory()->count(2)->create()->each(function (Team $team) use ($user) {
+            $team->users()->attach($user, ['role' => 'admin']);
+        });
 
-        $teams->each->addMember($user);
-
-        $this->assertCount(3, $user->fresh()->teams);
+        $this->assertCount(3, $user->fresh()->allTeams());
     }
 
-    /** @test */
-    public function a_user_is_automatically_asigned_a_team_on_creation()
+    #[Test]
+    public function a_user_is_assigned_a_personal_team()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPersonalTeam()->create();
 
-        $this->assertCount(1, $user->teams);
-
-        $this->assertEquals($user->name, $user->teams()->first()->name);
+        $this->assertCount(1, $user->ownedTeams);
+        $this->assertTrue($user->ownedTeams()->first()->personal_team);
     }
 }

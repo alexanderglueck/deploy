@@ -2,38 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use App\Project;
-use App\Team;
-use App\Workflow;
+use App\Models\Project;
+use App\Models\Team;
+use App\Models\Workflow;
+use App\Support\Event;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class WorkflowController extends Controller
 {
-    public function show(Request $request, Team $team, Project $project, Workflow $workflow)
+    public function show(Request $request, Team $team, Project $project, Workflow $workflow): Response
     {
-        return view('workflow.show', [
+        $workflow->load('server');
+
+        return Inertia::render('Workflow/Show', [
             'team' => $team,
             'project' => $project,
-            'workflow' => $workflow
+            'workflow' => $workflow,
+            'eventLabel' => Event::label($workflow->event),
         ]);
     }
 
-    public function create(Request $request, Team $team, Project $project)
+    public function create(Request $request, Team $team, Project $project): Response
     {
-        return view('workflow.create', [
+        return Inertia::render('Workflow/Create', [
             'team' => $team,
             'project' => $project,
             'servers' => $team->servers,
-            'workflow' => new Workflow
+            'events' => Event::options(),
         ]);
     }
 
-    public function store(Request $request, Team $team, Project $project)
+    public function store(Request $request, Team $team, Project $project): RedirectResponse
     {
         $validated = $request->validate([
             'event' => 'required',
             'actions' => 'required',
-            'server_id' => 'required'
+            'server_id' => 'required',
         ]);
 
         $project->workflows()->create($validated);
@@ -41,29 +48,30 @@ class WorkflowController extends Controller
         return redirect()->route('project.show', [$team, $project]);
     }
 
-    public function destroy(Request $request, Team $team, Project $project, Workflow $workflow)
+    public function destroy(Request $request, Team $team, Project $project, Workflow $workflow): RedirectResponse
     {
         $workflow->delete();
 
         return redirect()->route('project.show', [$team, $project]);
     }
 
-    public function edit(Request $request, Team $team, Project $project, Workflow $workflow)
+    public function edit(Request $request, Team $team, Project $project, Workflow $workflow): Response
     {
-        return view('workflow.edit', [
+        return Inertia::render('Workflow/Edit', [
             'team' => $team,
             'project' => $project,
             'servers' => $team->servers,
-            'workflow' => $workflow
+            'workflow' => $workflow,
+            'events' => Event::options(),
         ]);
     }
 
-    public function update(Request $request, Team $team, Project $project, Workflow $workflow)
+    public function update(Request $request, Team $team, Project $project, Workflow $workflow): RedirectResponse
     {
         $validated = $request->validate([
             'event' => 'required',
             'actions' => 'required',
-            'server_id' => 'required'
+            'server_id' => 'required',
         ]);
 
         $workflow->update($validated);

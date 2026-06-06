@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Team;
+use App\Models\Team;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class TeamController extends Controller
 {
-    public function show(Request $request, Team $team)
+    public function show(Request $request, Team $team): Response
     {
-        return view('team.show', [
+        return Inertia::render('Team/Show', [
             'team' => $team,
             'servers' => $team->servers,
-            'projects' => $team->projects
+            'projects' => $team->projects,
         ]);
     }
 }

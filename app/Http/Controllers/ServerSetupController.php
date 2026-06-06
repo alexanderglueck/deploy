@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Server;
-use App\Team;
+use App\Models\Server;
+use App\Models\Team;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ServerSetupController extends Controller
 {
-    public function store(Request $request, Team $team, Server $server)
+    public function store(Request $request, Team $team, Server $server): RedirectResponse
     {
         $request->validate([
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         if ($server->isSetUp()) {
@@ -23,7 +24,7 @@ class ServerSetupController extends Controller
             $server->copyPublicKey($request->input('password'));
         } catch (Exception $e) {
             return redirect()->route('server.show', [$team, $server])
-                ->withErrors($e->getMessage());
+                ->withErrors(['password' => $e->getMessage()]);
         }
 
         return redirect()->route('server.show', [$team, $server]);

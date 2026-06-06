@@ -2,17 +2,18 @@
 
 namespace Tests\Feature;
 
-use App\Deployment;
-use App\Project;
-use App\Workflow;
+use App\Models\Deployment;
+use App\Models\Project;
+use App\Models\Workflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ProjectTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function a_project_belongs_to_a_team()
     {
         $project = Project::factory()->create();
@@ -20,26 +21,26 @@ class ProjectTest extends TestCase
         $this->assertNotNull($project->team);
     }
 
-    /** @test */
+    #[Test]
     public function a_project_has_many_deployments()
     {
         $project = Project::factory()->create();
 
         $deployments = Deployment::factory()->count(2)->create([
-            'project_id' => $project->id
+            'project_id' => $project->id,
         ]);
 
         $this->assertCount(2, $project->deployments);
         $this->assertEquals($project->id, $deployments->first->project->id);
     }
 
-    /** @test */
+    #[Test]
     public function a_project_has_many_workflows()
     {
         $project = Project::factory()->create();
 
         $workflow = Workflow::factory([
-            'project_id' => $project->id
+            'project_id' => $project->id,
         ])->project()->create();
 
         $this->assertCount(1, $project->workflows);

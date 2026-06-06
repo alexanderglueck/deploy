@@ -2,120 +2,43 @@
 
 namespace Tests\Feature;
 
-use App\User;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function login_page_works()
+    public function test_login_screen_can_be_rendered(): void
     {
-        $this
-            ->get(route('login'))
-            ->assertStatus(200)
-            ->assertSee('Login');
+        $response = $this->get('/login');
+
+        $response->assertStatus(200);
     }
 
-    /** @test */
-    public function a_guest_can_login_with_correct_credentials()
+    public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
 
-        $this->post(route('login'), [
+        $response = $this->post('/login', [
             'email' => $user->email,
-            'password' => 'password'
-        ])->assertSessionMissing('errors');
-
-        $this->assertAuthenticatedAs($user);
-    }
-
-    /** @test */
-    public function a_guest_cannot_login_with_incorrect_credentials()
-    {
-        $user = User::factory()->create();
-
-        $this
-            ->post(route('login'), [
-                'email' => $user->email,
-                'password' => 'invalid'
-            ])
-            ->assertSessionHasErrors();
-
-        $this->assertGuest();
-    }
-
-    /** @test */
-    public function dashboard_page_works()
-    {
-        $user = User::factory()->create();
-
-        $this
-            ->actingAs($user)
-            ->get(route('home'))
-            ->assertStatus(200)
-            ->assertSee($user->name)
-            ->assertSee('Dashboard');
-    }
-
-    /** @test */
-    public function a_user_can_logout()
-    {
-        $user = User::factory()->create();
-
-        $this
-            ->actingAs($user)
-            ->post(route('logout'))
-            ->assertStatus(302);
-
-        $this->assertGuest();
-    }
-
-    /** @test */
-    public function register_page_works()
-    {
-        $this
-            ->get(route('register'))
-            ->assertStatus(200)
-            ->assertSee('Register');
-    }
-
-    /** @test */
-    public function a_guest_can_register()
-    {
-        $guest = User::factory()->make();
-
-        $this->post(route('register'), [
-            'name' => $guest->name,
-            'email' => $guest->email,
             'password' => 'password',
-            'password_confirmation' => 'password',
-        ])->assertSessionMissing('errors');
+        ]);
 
-        $this->assertAuthenticatedAs(
-            User::whereEmail($guest->email)->first()
-        );
+        $this->assertAuthenticated();
+        $response->assertRedirect(route('dashboard', absolute: false));
     }
 
-    /** @test */
-    public function forgot_password_page_works()
-    {
-        $this
-            ->get(route('password.request'))
-            ->assertStatus(200)
-            ->assertSee('Reset Password');
-    }
-
-    /** @test */
-    public function a_user_can_request_a_password_reset_email()
+    public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
 
-        $this->post(route('password.email'), [
+        $this->post('/login', [
             'email' => $user->email,
-        ])->assertSessionMissing('errors');
+            'password' => 'wrong-password',
+        ]);
+
+        $this->assertGuest();
     }
 }

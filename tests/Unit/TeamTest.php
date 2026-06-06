@@ -2,20 +2,16 @@
 
 namespace Tests\Unit;
 
-use App\Team;
-use App\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use App\Models\Team;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 class TeamTest extends TestCase
 {
-    use RefreshDatabase;
-
-    /** @test */
+    #[Test]
     public function a_team_has_a_name()
     {
-        $team = new Team();
+        $team = new Team;
         $team->name = 'John';
 
         $this->assertEquals('John', $team->name);

@@ -2,10 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Deployment;
-use App\Project;
-use App\Server;
-use App\Workflow;
+use App\Models\Deployment;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\Workflow;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,8 +31,6 @@ class ProcessDeployments implements ShouldQueue
 
     /**
      * Create a new job instance.
-     *
-     * @param Deployment $deployment
      */
     public function __construct(Deployment $deployment)
     {
@@ -53,7 +51,7 @@ class ProcessDeployments implements ShouldQueue
 
         // Set processed_at
         $this->deployment->update([
-            'processed_at' => Carbon::now()
+            'processed_at' => Carbon::now(),
         ]);
 
         /** @var Project $project */
@@ -64,7 +62,7 @@ class ProcessDeployments implements ShouldQueue
 
         // Store the workflow actions in case the workflow changes
         $this->deployment->update([
-            'actions' => $workflow->actions
+            'actions' => $workflow->actions,
         ]);
 
         /** @var Server $server */
@@ -75,7 +73,7 @@ class ProcessDeployments implements ShouldQueue
         }
 
         $this->deployment->update([
-            'deployed_at' => Carbon::now()
+            'deployed_at' => Carbon::now(),
         ]);
     }
 }

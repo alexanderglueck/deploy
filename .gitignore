@@ -15,6 +15,7 @@ yarn-error.log
 /storage/tmp/db/*
 .phpstorm.meta.php
 _ide_helper.php
+.idea/
 
 # generated files
 /public/css/app.css

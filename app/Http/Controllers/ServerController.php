@@ -2,38 +2,40 @@
 
 namespace App\Http\Controllers;
 
-use App\Project;
-use App\Server;
-use App\Team;
+use App\Models\Server;
+use App\Models\Team;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ServerController extends Controller
 {
-    public function index(Request $request, Team $team)
+    public function index(Request $request, Team $team): Response
     {
-        return view('server.index', [
+        return Inertia::render('Server/Index', [
             'team' => $team,
-            'servers' => $team->servers
+            'servers' => $team->servers,
         ]);
     }
 
-    public function show(Request $request, Team $team, Server $server)
+    public function show(Request $request, Team $team, Server $server): Response
     {
-        return view('server.show', [
+        return Inertia::render('Server/Show', [
             'team' => $team,
-            'server' => $server
+            'server' => $server,
+            'isSetUp' => $server->isSetUp(),
         ]);
     }
 
-    public function create(Request $request, Team $team)
+    public function create(Request $request, Team $team): Response
     {
-        return view('server.create', [
+        return Inertia::render('Server/Create', [
             'team' => $team,
-            'server' => new Server
         ]);
     }
 
-    public function store(Request $request, Team $team)
+    public function store(Request $request, Team $team): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required',
