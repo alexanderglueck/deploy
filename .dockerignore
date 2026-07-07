@@ -1,4 +1,6 @@
-bootstrap/cache/services.php
+# Locally generated bootstrap caches reference dev-only providers; the app
+# regenerates them at runtime.
+bootstrap/cache/*
 
 storage/framework/cache/*
 storage/framework/sessions/*
@@ -10,6 +12,7 @@ node_modules/
 vendor/
 public/build/
 .docker
+!.docker/entrypoint.sh
 Dockerfile
 docker-compose.yml
 .git/

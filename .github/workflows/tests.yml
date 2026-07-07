@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: bcmath, gd, intl, pdo_mysql, pdo_sqlite, zip
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      # Inertia page tests render the Blade shell, which needs a Vite manifest.
+      - name: Build front-end assets
+        run: npm ci && npm run build
+
+      - name: Run tests
+        run: vendor/bin/phpunit
+
+      - name: Check code style
+        run: vendor/bin/pint --test

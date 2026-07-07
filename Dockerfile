@@ -78,17 +78,50 @@ COPY . .
 RUN composer install --optimize-autoloader --no-interaction
 
 # ---- Production image -------------------------------------------------------
-FROM base AS production
+# FrankenPHP serves the app directly on :80 (single container, no fpm/nginx
+# split). The image also ships git + the docker CLI/buildx/compose plugins so
+# the queue worker can run docker_deploy steps against a mounted docker socket.
+#
+# Runs as root on purpose: the web container binds :80, and the worker needs
+# the host's docker socket (root-equivalent by definition). Deployed apps run
+# in their own containers; put the UI behind Cloudflare Access or similar.
+FROM dunglas/frankenphp:1-php8.5 AS production
+WORKDIR /app
+
+RUN install-php-extensions \
+    bcmath \
+    gd \
+    intl \
+    opcache \
+    pcntl \
+    pdo_mysql \
+    zip
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends ca-certificates curl git \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+        > /etc/apt/sources.list.d/docker.list \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV APP_ENV=production
+# The default Caddyfile serves /app/public on whatever SERVER_NAME says.
+ENV SERVER_NAME=:80
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-COPY --chown=dockeruser . .
-COPY --from=vendor --chown=dockeruser /app/vendor ./vendor
-COPY --from=assets --chown=dockeruser /app/public/build ./public/build
+
+COPY . .
+COPY --from=vendor /app/vendor ./vendor
+COPY --from=assets /app/public/build ./public/build
 COPY --chmod=0755 .docker/entrypoint.sh /usr/local/bin/app-entrypoint
-RUN chown -R dockeruser /app/storage /app/bootstrap/cache
-USER dockeruser
+
+EXPOSE 80
 ENTRYPOINT ["app-entrypoint"]
-CMD ["php-fpm"]
+# Args for `frankenphp run` (docker-php-entrypoint prepends the binary).
+CMD ["--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 
 # ---- Development image ------------------------------------------------------
 # Source code, vendor and node_modules are bind-mounted from the host
