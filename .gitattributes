@@ -3,3 +3,6 @@
 *.scss linguist-vendored
 *.js linguist-vendored
 CHANGELOG.md export-ignore
+
+# Shell scripts must stay LF - they run inside Linux containers.
+*.sh text eol=lf
