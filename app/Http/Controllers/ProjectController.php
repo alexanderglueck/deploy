@@ -16,8 +16,10 @@ class ProjectController extends Controller
 
         return Inertia::render('Project/Show', [
             'project' => $project,
-            'workflows' => $project->workflows()->with('server')->get(),
-            'deployments' => $project->deployments()->with('log')->get(),
+            // The secret is hidden from serialization; the setup card needs it.
+            'webhookSecret' => $project->webhook_secret,
+            'workflows' => $project->workflows()->with(['server', 'steps'])->get(),
+            'deployments' => $project->deployments()->with(['log', 'steps'])->get(),
         ]);
     }
 
@@ -32,12 +34,30 @@ class ProjectController extends Controller
     {
         $team = $this->currentTeam($request);
 
-        $validated = $request->validate([
-            'name' => 'required',
-        ]);
-
-        $team->projects()->create($validated);
+        $team->projects()->create($this->validateProject($request));
 
         return redirect()->route('team.show');
+    }
+
+    public function update(Request $request, Project $project): RedirectResponse
+    {
+        $this->ensureOwnedByCurrentTeam($request, $project->team_id);
+
+        $project->update($this->validateProject($request));
+
+        return redirect()->route('project.show', $project);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateProject(Request $request): array
+    {
+        return $request->validate([
+            'name' => 'required',
+            'repository' => ['nullable', 'string', 'regex:#^[\w.-]+/[\w.-]+$#'],
+            // Flows into generated clone commands, so the shape is strict.
+            'default_branch' => ['nullable', 'string', 'regex:#^[\w./-]+$#'],
+        ]);
     }
 }

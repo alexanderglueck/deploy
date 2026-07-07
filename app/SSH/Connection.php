@@ -18,9 +18,11 @@ class Connection
 
     protected $user = null;
 
+    protected $timeout = null;
+
     protected $password = null;
 
-    protected $pathToPrivateKey = null;
+    protected $privateKey = null;
 
     protected $output = null;
 
@@ -32,23 +34,25 @@ class Connection
      * @param  string  $ip
      * @param  int  $port
      * @param  string  $user
+     * @param  int  $timeout
      */
-    public function __construct($ip, $port, $user)
+    public function __construct($ip, $port, $user, $timeout = 300)
     {
         $this->ip = $ip;
         $this->port = $port;
         $this->user = $user;
+        $this->timeout = $timeout;
 
         return $this;
     }
 
     /**
-     * @param  string  $pathToPrivateKey
+     * @param  string  $privateKey  the key material itself (OpenSSH format)
      * @return $this
      */
-    public function usingPrivateKey($pathToPrivateKey)
+    public function usingPrivateKey($privateKey)
     {
-        $this->pathToPrivateKey = $pathToPrivateKey;
+        $this->privateKey = $privateKey;
 
         return $this;
     }
@@ -71,13 +75,13 @@ class Connection
      */
     public function connect()
     {
-        $this->connection = new SSH2($this->ip, $this->port, 300);
+        $this->connection = new SSH2($this->ip, $this->port, $this->timeout);
 
         if (! $this->connection) {
             throw new Exception('Could not connect to server.');
         }
 
-        if (! $this->password && ! $this->pathToPrivateKey) {
+        if (! $this->password && ! $this->privateKey) {
             throw new Exception('No authentication method set. Call usingPassword or usingPrivateKey prior to calling connect.');
         }
 
@@ -87,10 +91,10 @@ class Connection
             }
         }
 
-        if ($this->pathToPrivateKey) {
-            $key = PublicKeyLoader::load(file_get_contents($this->pathToPrivateKey));
+        if ($this->privateKey) {
+            $key = PublicKeyLoader::load($this->privateKey);
             if (! $this->connection->login($this->user, $key)) {
-                throw new Exception('Could not login. No password provided. Is the server set up?');
+                throw new Exception('Could not login with the server\'s key. Is the server set up?');
             }
         }
 
@@ -110,6 +114,16 @@ class Connection
     public function upload($localPath, $remotePath)
     {
         return (new SCP($this->connection))->put($remotePath, $localPath, SCP::SOURCE_LOCAL_FILE);
+    }
+
+    /**
+     * Write a string to a remote file.
+     *
+     * @return bool
+     */
+    public function uploadContent($content, $remotePath)
+    {
+        return (new SCP($this->connection))->put($remotePath, $content, SCP::SOURCE_STRING);
     }
 
     /**
@@ -134,6 +148,17 @@ class Connection
         }
 
         $this->error = $this->connection->getStdError();
+    }
+
+    /**
+     * The exit status of the last command, or false if the server did not
+     * report one.
+     *
+     * @return int|false
+     */
+    public function getExitStatus()
+    {
+        return $this->connection->getExitStatus();
     }
 
     /**

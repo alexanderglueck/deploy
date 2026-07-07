@@ -16,19 +16,43 @@ class Project extends Model
 
     protected $fillable = [
         'name',
+        'repository',
+        'default_branch',
         'team_id',
     ];
 
     /**
      * Internal identifiers are never exposed to the front-end; the public
-     * `ulid` is used instead.
+     * `ulid` is used instead. The webhook secret is only shown where the
+     * controller passes it explicitly.
      *
      * @var array<int, string>
      */
     protected $hidden = [
         'id',
         'team_id',
+        'webhook_secret',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'webhook_secret' => 'encrypted',
+        ];
+    }
+
+    /**
+     * Whether an incoming webhook's repository matches this project. Projects
+     * without a configured repository accept any.
+     */
+    public function matchesRepository(?string $repository): bool
+    {
+        if ($this->repository === null) {
+            return true;
+        }
+
+        return $repository !== null && strcasecmp($this->repository, $repository) === 0;
+    }
 
     /**
      * @return BelongsTo
@@ -59,6 +83,10 @@ class Project extends Model
         static::creating(function (Project $project) {
             if (! $project->deploy_endpoint) {
                 $project->deploy_endpoint = Str::uuid()->toString();
+            }
+
+            if (! $project->webhook_secret) {
+                $project->webhook_secret = Str::random(40);
             }
         });
     }

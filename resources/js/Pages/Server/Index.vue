@@ -30,8 +30,11 @@ defineProps({
                     </div>
                     <ul class="divide-y divide-gray-100">
                         <li v-for="server in servers" :key="server.ulid">
-                            <Link :href="route('server.show', server)" class="block px-4 py-3 hover:bg-gray-50 text-gray-800">
+                            <Link :href="route('server.show', server)" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-gray-800">
                                 {{ server.name }}
+                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                                    {{ server.type === 'local' ? 'This server' : 'SSH' }}
+                                </span>
                             </Link>
                         </li>
                         <li v-if="!servers.length" class="px-4 py-3 text-sm text-gray-400">No servers yet.</li>

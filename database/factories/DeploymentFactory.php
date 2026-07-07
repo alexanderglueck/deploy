@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Deployment;
 use App\Models\Project;
+use App\Support\Event;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class DeploymentFactory extends Factory
@@ -23,7 +24,7 @@ class DeploymentFactory extends Factory
     public function definition()
     {
         return [
-            'event' => $this->faker->randomElement(['push']),
+            'event' => Event::PUSH,
             'ref' => 'refs/heads/master',
             'repository' => 'jondoe/deploy',
             'project_id' => Project::factory(),

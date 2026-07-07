@@ -58,6 +58,13 @@ class DeploymentTest extends TestCase
         $this->assertSame('deployed', $deployed->status);
         $this->assertFalse($deployed->isActive());
 
+        $failed = Deployment::factory()->create([
+            'processed_at' => now(),
+            'failed_at' => now(),
+        ]);
+        $this->assertSame('failed', $failed->status);
+        $this->assertFalse($failed->isActive());
+
         $canceled = Deployment::factory()->create([
             'canceled_at' => now(),
         ]);

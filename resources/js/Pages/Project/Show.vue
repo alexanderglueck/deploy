@@ -4,21 +4,44 @@ import { Link, useForm, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
 import LogOutput from '@/Components/LogOutput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
     project: Object,
+    webhookSecret: String,
     workflows: Array,
     deployments: Array,
 });
 
 const deployUrl = route('api.deployment.store', props.project.deploy_endpoint);
 
+const secretRevealed = ref(false);
+const copiedField = ref(null);
+
+const copyToClipboard = async (field, value) => {
+    await navigator.clipboard.writeText(value);
+    copiedField.value = field;
+    setTimeout(() => (copiedField.value = null), 2000);
+};
+
 const deployForm = useForm({});
 const deleteForm = useForm({});
 const cancelForm = useForm({});
+
+const settingsForm = useForm({
+    name: props.project.name,
+    repository: props.project.repository ?? '',
+    default_branch: props.project.default_branch ?? '',
+});
+
+const saveSettings = () => {
+    settingsForm.put(route('project.update', props.project), { preserveScroll: true });
+};
 
 const workflowPendingDeletion = ref(null);
 const deploymentPendingCancellation = ref(null);
@@ -53,8 +76,50 @@ const STATUS_META = {
     pending: { label: 'Pending', class: 'bg-gray-100 text-gray-600', active: true },
     deploying: { label: 'Deploying', class: 'bg-blue-100 text-blue-700', active: true },
     deployed: { label: 'Deployed', class: 'bg-green-100 text-green-700', active: false },
-    canceled: { label: 'Canceled', class: 'bg-red-100 text-red-700', active: false },
+    failed: { label: 'Failed', class: 'bg-red-100 text-red-700', active: false },
+    canceled: { label: 'Canceled', class: 'bg-gray-200 text-gray-600', active: false },
 };
+
+const STEP_META = {
+    pending: { label: 'Pending', class: 'bg-gray-100 text-gray-500' },
+    running: { label: 'Running', class: 'bg-blue-100 text-blue-700' },
+    succeeded: { label: 'OK', class: 'bg-green-100 text-green-700' },
+    failed: { label: 'Failed', class: 'bg-red-100 text-red-700' },
+    skipped: { label: 'Skipped', class: 'bg-gray-100 text-gray-400' },
+};
+
+const STEP_TYPE_LABELS = {
+    docker_deploy: 'Docker deploy',
+    inline_script: 'Script',
+    script_file: 'Script file',
+};
+
+const stepDuration = (step) => {
+    if (!step.started_at || !step.finished_at) return null;
+    const seconds = Math.round((new Date(step.finished_at) - new Date(step.started_at)) / 1000);
+    return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+};
+
+// A ready-to-commit GitHub Actions workflow as an alternative to a native
+// webhook. `interp` avoids Vue parsing the GitHub ${{ }} expressions.
+const interp = (expr) => '${{ ' + expr + ' }}';
+const actionsSnippet = `name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deployment
+        run: |
+          curl --fail -X POST "${deployUrl}" \\
+            -H "Content-Type: application/json" \\
+            -H "X-Deploy-Secret: ${interp('secrets.DEPLOY_SECRET')}" \\
+            --data '{"event":"push","ref":"${interp('github.ref')}","repo":"${interp('github.repository')}","sha":"${interp('github.sha')}"}'
+`;
 
 const isActive = (deployment) => STATUS_META[deployment.status]?.active ?? false;
 const hasActiveDeployment = computed(() => props.deployments.some(isActive));
@@ -95,7 +160,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                     <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                         <div>
                             <span class="font-medium text-gray-700">{{ project.name }}</span>
-                            <span class="text-gray-400 text-sm"> ({{ deployUrl }})</span>
+                            <span v-if="project.repository" class="text-gray-400 text-sm"> ({{ project.repository }})</span>
                         </div>
                         <Link
                             :href="route('workflow.create', project)"
@@ -110,8 +175,17 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                             <details>
                                 <summary class="cursor-pointer font-medium text-gray-800">
                                     Workflow {{ index + 1 }} on {{ workflow.server.name }}
+                                    <span class="ms-2 text-xs font-normal text-gray-400">
+                                        {{ (workflow.steps?.length ? workflow.steps.map((s) => STEP_TYPE_LABELS[s.type] ?? s.type) : ['Script']).join(' → ') }}
+                                    </span>
                                 </summary>
-                                <pre class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ workflow.actions }}</samp></pre>
+                                <ol v-if="workflow.steps?.length" class="mt-2 space-y-1 text-sm text-gray-600">
+                                    <li v-for="(step, stepIndex) in workflow.steps" :key="step.ulid">
+                                        {{ stepIndex + 1 }}. {{ STEP_TYPE_LABELS[step.type] ?? step.type }}
+                                        <code v-if="step.config?.path" class="rounded bg-gray-100 px-1 text-xs">{{ step.config.path }}</code>
+                                    </li>
+                                </ol>
+                                <pre v-else class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ workflow.actions }}</samp></pre>
                                 <div class="mt-3 flex items-center gap-2">
                                     <Link
                                         :href="route('workflow.edit', [project, workflow])"
@@ -130,6 +204,97 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                         </li>
                         <li v-if="!workflows.length" class="px-4 py-3 text-sm text-gray-400">No workflows yet.</li>
                     </ul>
+                </div>
+
+                <!-- Settings -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <details>
+                        <summary class="cursor-pointer px-4 py-3 font-medium text-gray-700">
+                            Settings
+                        </summary>
+                        <form class="space-y-4 border-t border-gray-100 p-4" @submit.prevent="saveSettings">
+                            <div class="grid gap-4 sm:grid-cols-3">
+                                <div>
+                                    <InputLabel for="settings-name" value="Name" />
+                                    <TextInput id="settings-name" v-model="settingsForm.name" type="text" class="mt-1 block w-full" required />
+                                    <InputError :message="settingsForm.errors.name" class="mt-2" />
+                                </div>
+                                <div>
+                                    <InputLabel for="settings-repository" value="Repository" />
+                                    <TextInput id="settings-repository" v-model="settingsForm.repository" type="text" class="mt-1 block w-full" placeholder="owner/name" />
+                                    <InputError :message="settingsForm.errors.repository" class="mt-2" />
+                                </div>
+                                <div>
+                                    <InputLabel for="settings-branch" value="Manual deploy branch" />
+                                    <TextInput id="settings-branch" v-model="settingsForm.default_branch" type="text" class="mt-1 block w-full" placeholder="repository default" />
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Branch cloned by the Deploy button. Leave empty to use the repository's default branch.
+                                    </p>
+                                    <InputError :message="settingsForm.errors.default_branch" class="mt-2" />
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <PrimaryButton :class="{ 'opacity-25': settingsForm.processing }" :disabled="settingsForm.processing">
+                                    Save
+                                </PrimaryButton>
+                            </div>
+                        </form>
+                    </details>
+                </div>
+
+                <!-- Webhook setup -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <div class="px-4 py-3 border-b border-gray-200 font-medium text-gray-700">
+                        Webhook
+                    </div>
+                    <div class="p-4 space-y-4 text-sm">
+                        <div>
+                            <div class="mb-1 text-xs font-medium text-gray-500">Payload URL (POST)</div>
+                            <div class="flex items-center gap-2">
+                                <code class="flex-1 overflow-x-auto rounded bg-gray-100 px-2 py-1.5 text-xs text-gray-800">{{ deployUrl }}</code>
+                                <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="copyToClipboard('url', deployUrl)">
+                                    {{ copiedField === 'url' ? 'Copied!' : 'Copy' }}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="mb-1 text-xs font-medium text-gray-500">Secret</div>
+                            <div class="flex items-center gap-2">
+                                <code class="flex-1 overflow-x-auto rounded bg-gray-100 px-2 py-1.5 text-xs text-gray-800">
+                                    {{ secretRevealed ? webhookSecret : '••••••••••••••••••••' }}
+                                </code>
+                                <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="secretRevealed = !secretRevealed">
+                                    {{ secretRevealed ? 'Hide' : 'Reveal' }}
+                                </button>
+                                <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="copyToClipboard('secret', webhookSecret)">
+                                    {{ copiedField === 'secret' ? 'Copied!' : 'Copy' }}
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-gray-500">
+                            On GitHub, add a webhook with this payload URL, content type
+                            <code class="rounded bg-gray-100 px-1">application/json</code> and this secret
+                            (requests are verified via <code class="rounded bg-gray-100 px-1">X-Hub-Signature-256</code>).
+                            Other callers can send the secret directly in an
+                            <code class="rounded bg-gray-100 px-1">X-Deploy-Secret</code> header.
+                        </p>
+                        <details>
+                            <summary class="cursor-pointer text-gray-600">
+                                Prefer a file in the repository? Use a GitHub Actions workflow instead.
+                            </summary>
+                            <p class="mt-2 text-gray-500">
+                                Commit this as <code class="rounded bg-gray-100 px-1">.github/workflows/deploy.yml</code>
+                                and add the secret above as a repository secret named
+                                <code class="rounded bg-gray-100 px-1">DEPLOY_SECRET</code>.
+                            </p>
+                            <div class="mt-2 flex items-start gap-2">
+                                <pre class="flex-1 overflow-x-auto rounded bg-gray-900 p-3 text-xs text-gray-100"><samp>{{ actionsSnippet }}</samp></pre>
+                                <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="copyToClipboard('snippet', actionsSnippet)">
+                                    {{ copiedField === 'snippet' ? 'Copied!' : 'Copy' }}
+                                </button>
+                            </div>
+                        </details>
+                    </div>
                 </div>
 
                 <!-- Deployments -->
@@ -166,13 +331,57 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                             </div>
 
                             <dl class="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-500 sm:grid-cols-4">
+                                <div><dt class="inline font-medium">Ref:</dt> {{ deployment.ref }}</div>
+                                <div><dt class="inline font-medium">Commit:</dt> {{ deployment.commit_sha ? deployment.commit_sha.slice(0, 10) : '—' }}</div>
                                 <div><dt class="inline font-medium">Received:</dt> {{ fmt(deployment.received_at) }}</div>
                                 <div><dt class="inline font-medium">Processed:</dt> {{ fmt(deployment.processed_at) }}</div>
                                 <div><dt class="inline font-medium">Deployed:</dt> {{ fmt(deployment.deployed_at) }}</div>
-                                <div><dt class="inline font-medium">Canceled:</dt> {{ fmt(deployment.canceled_at) }}</div>
+                                <div v-if="deployment.failed_at"><dt class="inline font-medium">Failed:</dt> {{ fmt(deployment.failed_at) }}</div>
+                                <div v-if="deployment.canceled_at"><dt class="inline font-medium">Canceled:</dt> {{ fmt(deployment.canceled_at) }}</div>
                             </dl>
 
-                            <div v-if="isActive(deployment)" class="mt-3">
+                            <!-- Step-based deployments -->
+                            <div v-if="deployment.steps?.length" class="mt-3 space-y-2">
+                                <div
+                                    v-for="step in deployment.steps"
+                                    :key="step.ulid"
+                                    class="rounded-lg border border-gray-100"
+                                >
+                                    <details :open="step.status === 'running' || step.status === 'failed'">
+                                        <summary class="flex cursor-pointer items-center justify-between px-3 py-2">
+                                            <span class="flex items-center gap-2 text-sm text-gray-700">
+                                                <span
+                                                    class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                                                    :class="STEP_META[step.status]?.class"
+                                                >
+                                                    <span v-if="step.status === 'running'" class="me-1.5 inline-flex size-1.5 animate-pulse rounded-full bg-current" />
+                                                    {{ STEP_META[step.status]?.label ?? step.status }}
+                                                </span>
+                                                {{ step.position }}. {{ STEP_TYPE_LABELS[step.type] ?? step.type }}
+                                            </span>
+                                            <span class="text-xs text-gray-400">
+                                                <template v-if="stepDuration(step)">{{ stepDuration(step) }}</template>
+                                                <template v-if="step.exit_code !== null && step.exit_code !== 0"> · exit {{ step.exit_code }}</template>
+                                            </span>
+                                        </summary>
+                                        <div class="border-t border-gray-100 p-2">
+                                            <LogOutput
+                                                :content="step.output"
+                                                placeholder="No output."
+                                                max-height="max-h-72"
+                                                :auto-scroll="step.status === 'running'"
+                                            />
+                                        </div>
+                                    </details>
+                                </div>
+                                <details v-if="deployment.log?.log" class="mt-2">
+                                    <summary class="cursor-pointer text-sm text-gray-600">System log</summary>
+                                    <LogOutput class="mt-2" :content="deployment.log.log" />
+                                </details>
+                            </div>
+
+                            <!-- Legacy single-log deployments -->
+                            <div v-else-if="isActive(deployment)" class="mt-3">
                                 <div class="mb-1 text-xs font-medium text-gray-500">Live log</div>
                                 <LogOutput
                                     :content="deployment.log?.log"
@@ -182,7 +391,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 />
                             </div>
                             <template v-else>
-                                <details class="mt-2">
+                                <details v-if="deployment.actions" class="mt-2">
                                     <summary class="cursor-pointer text-sm text-gray-600">Executed actions</summary>
                                     <pre class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ deployment.actions }}</samp></pre>
                                 </details>

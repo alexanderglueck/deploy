@@ -4,18 +4,26 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import WorkflowStepsEditor from '@/Components/WorkflowStepsEditor.vue';
 
 const props = defineProps({
     project: Object,
     servers: Array,
     workflow: Object,
     events: Array,
+    stepTypes: Array,
 });
+
+// Legacy workflows carry a single free-form script in `actions`; editing one
+// converts it into an equivalent script step.
+const initialSteps = props.workflow.steps?.length
+    ? props.workflow.steps.map((step) => ({ type: step.type, config: { ...(step.config ?? {}) } }))
+    : [{ type: 'inline_script', config: { script: props.workflow.actions ?? '' } }];
 
 const form = useForm({
     event: props.workflow.event,
     server: props.workflow.server?.ulid,
-    actions: props.workflow.actions,
+    steps: initialSteps,
 });
 
 const submit = () => {
@@ -58,9 +66,10 @@ const fieldClass = 'mt-1 block w-full border-gray-300 focus:border-indigo-500 fo
                         </div>
 
                         <div>
-                            <InputLabel for="actions" value="Actions" />
-                            <textarea id="actions" v-model="form.actions" rows="6" :class="fieldClass" required />
-                            <InputError :message="form.errors.actions" class="mt-2" />
+                            <InputLabel value="Steps" />
+                            <div class="mt-2">
+                                <WorkflowStepsEditor v-model="form.steps" :step-types="stepTypes" :errors="form.errors" />
+                            </div>
                         </div>
 
                         <div class="flex justify-end">

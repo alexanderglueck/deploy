@@ -51,4 +51,45 @@ class ProjectControllerTest extends TestCase
             'name' => $project->name,
         ]);
     }
+
+    #[Test]
+    public function a_project_can_be_updated()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $project = Project::factory()->create(['team_id' => $user->currentTeam->id]);
+
+        $this->actingAs($user)->put(route('project.update', $project), [
+            'name' => 'Renamed',
+            'repository' => 'jondoe/deploy',
+            'default_branch' => 'develop',
+        ])->assertRedirect(route('project.show', $project));
+
+        $project->refresh();
+        $this->assertSame('Renamed', $project->name);
+        $this->assertSame('jondoe/deploy', $project->repository);
+        $this->assertSame('develop', $project->default_branch);
+    }
+
+    #[Test]
+    public function a_shell_unsafe_branch_is_rejected()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $project = Project::factory()->create(['team_id' => $user->currentTeam->id]);
+
+        $this->actingAs($user)->put(route('project.update', $project), [
+            'name' => $project->name,
+            'default_branch' => 'main; rm -rf /',
+        ])->assertSessionHasErrors(['default_branch']);
+    }
+
+    #[Test]
+    public function a_user_cannot_update_another_teams_project()
+    {
+        $outsider = User::factory()->withPersonalTeam()->create();
+        $project = Project::factory()->create();
+
+        $this->actingAs($outsider)->put(route('project.update', $project), [
+            'name' => 'Hijacked',
+        ])->assertNotFound();
+    }
 }

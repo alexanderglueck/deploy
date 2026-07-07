@@ -19,8 +19,14 @@ class DeploymentController extends Controller
         $data = [
             'project_id' => $project->id,
             'event' => Event::PUSH,
-            'ref' => 'manual_deploy',
-            'repository' => 'manual_deploy',
+            // With a configured branch, docker deploy steps clone exactly it;
+            // otherwise they clone the remote's default branch.
+            'ref' => $project->default_branch
+                ? 'refs/heads/'.$project->default_branch
+                : 'manual_deploy',
+            // Docker deploy steps clone this; the fallback keeps legacy
+            // projects without a repository working for script workflows.
+            'repository' => $project->repository ?? 'manual_deploy',
             'received_at' => Carbon::now(),
         ];
 

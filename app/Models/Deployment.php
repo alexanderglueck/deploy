@@ -19,10 +19,12 @@ class Deployment extends Model
         'event',
         'ref',
         'repository',
+        'commit_sha',
         'actions',
         'received_at',
         'processed_at',
         'deployed_at',
+        'failed_at',
         'canceled_at',
     ];
 
@@ -49,6 +51,7 @@ class Deployment extends Model
             'received_at' => 'datetime',
             'processed_at' => 'datetime',
             'deployed_at' => 'datetime',
+            'failed_at' => 'datetime',
             'canceled_at' => 'datetime',
         ];
     }
@@ -63,6 +66,7 @@ class Deployment extends Model
         return Attribute::get(function (): string {
             return match (true) {
                 $this->isCanceled() => 'canceled',
+                $this->isFailed() => 'failed',
                 $this->isDeployed() => 'deployed',
                 $this->isPending() => 'pending',
                 default => 'deploying',
@@ -75,7 +79,7 @@ class Deployment extends Model
      */
     public function isActive(): bool
     {
-        return ! $this->isDeployed() && ! $this->isCanceled();
+        return ! $this->isDeployed() && ! $this->isFailed() && ! $this->isCanceled();
     }
 
     /**
@@ -92,6 +96,11 @@ class Deployment extends Model
     public function log()
     {
         return $this->hasOne(Log::class);
+    }
+
+    public function steps()
+    {
+        return $this->hasMany(DeploymentStep::class)->orderBy('position');
     }
 
     /**
@@ -118,12 +127,29 @@ class Deployment extends Model
         return $this->deployed_at != null;
     }
 
+    public function isFailed(): bool
+    {
+        return $this->failed_at != null;
+    }
+
     /**
      * @return bool
      */
     public function isDeploying()
     {
-        return ! $this->isPending() && ! $this->isDeployed() && ! $this->isCanceled();
+        return ! $this->isPending() && ! $this->isDeployed() && ! $this->isFailed() && ! $this->isCanceled();
+    }
+
+    /**
+     * Append output to this deployment's log.
+     */
+    public function appendLog(string $chunk): void
+    {
+        $log = $this->log;
+
+        $log->update([
+            'log' => $log->log.$chunk,
+        ]);
     }
 
     protected static function booted()

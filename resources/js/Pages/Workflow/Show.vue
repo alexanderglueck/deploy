@@ -2,11 +2,14 @@
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
-defineProps({
+const props = defineProps({
     project: Object,
     workflow: Object,
     eventLabel: String,
+    stepTypes: Array,
 });
+
+const typeLabel = (type) => props.stepTypes?.find((t) => t.value === type)?.label ?? type;
 </script>
 
 <template>
@@ -58,9 +61,29 @@ defineProps({
 
                 <div class="bg-white shadow sm:rounded-lg overflow-hidden">
                     <div class="px-4 py-3 border-b border-gray-200 font-medium text-gray-700">
-                        Actions
+                        Steps
                     </div>
-                    <pre class="text-gray-100 bg-gray-900 p-4 overflow-x-auto text-sm leading-relaxed"><samp>{{ workflow.actions }}</samp></pre>
+                    <ul v-if="workflow.steps?.length" class="divide-y divide-gray-100">
+                        <li v-for="(step, index) in workflow.steps" :key="step.ulid" class="px-4 py-3">
+                            <div class="text-sm font-medium text-gray-700">
+                                {{ index + 1 }}. {{ typeLabel(step.type) }}
+                            </div>
+                            <pre v-if="step.config?.script" class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ step.config.script }}</samp></pre>
+                            <div v-else-if="step.config?.path" class="mt-1 text-sm text-gray-500">
+                                <code class="rounded bg-gray-100 px-1">{{ step.config.path }}</code>
+                                <span v-if="step.config.args"> {{ step.config.args }}</span>
+                            </div>
+                            <div v-else-if="step.type === 'docker_deploy'" class="mt-1 text-sm text-gray-500">
+                                <span v-if="Object.keys(step.config ?? {}).length === 0">Using conventions.</span>
+                                <span v-else>
+                                    <template v-for="(value, key) in step.config" :key="key">
+                                        <code class="rounded bg-gray-100 px-1 me-2">{{ key }}: {{ value }}</code>
+                                    </template>
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                    <pre v-else class="text-gray-100 bg-gray-900 p-4 overflow-x-auto text-sm leading-relaxed"><samp>{{ workflow.actions }}</samp></pre>
                 </div>
 
                 <div>

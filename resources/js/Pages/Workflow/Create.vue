@@ -4,17 +4,19 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import WorkflowStepsEditor from '@/Components/WorkflowStepsEditor.vue';
 
 const props = defineProps({
     project: Object,
     servers: Array,
     events: Array,
+    stepTypes: Array,
 });
 
 const form = useForm({
     event: props.events.length ? props.events[0].value : '',
     server: props.servers.length ? props.servers[0].ulid : '',
-    actions: '',
+    steps: [{ type: 'docker_deploy', config: {} }],
 });
 
 const submit = () => {
@@ -57,9 +59,10 @@ const fieldClass = 'mt-1 block w-full border-gray-300 focus:border-indigo-500 fo
                         </div>
 
                         <div>
-                            <InputLabel for="actions" value="Actions" />
-                            <textarea id="actions" v-model="form.actions" rows="6" :class="fieldClass" required />
-                            <InputError :message="form.errors.actions" class="mt-2" />
+                            <InputLabel value="Steps" />
+                            <div class="mt-2">
+                                <WorkflowStepsEditor v-model="form.steps" :step-types="stepTypes" :errors="form.errors" />
+                            </div>
                         </div>
 
                         <div class="flex justify-end">

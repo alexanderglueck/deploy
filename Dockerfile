@@ -84,8 +84,10 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY --chown=dockeruser . .
 COPY --from=vendor --chown=dockeruser /app/vendor ./vendor
 COPY --from=assets --chown=dockeruser /app/public/build ./public/build
+COPY --chmod=0755 .docker/entrypoint.sh /usr/local/bin/app-entrypoint
 RUN chown -R dockeruser /app/storage /app/bootstrap/cache
 USER dockeruser
+ENTRYPOINT ["app-entrypoint"]
 CMD ["php-fpm"]
 
 # ---- Development image ------------------------------------------------------

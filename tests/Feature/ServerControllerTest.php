@@ -53,4 +53,31 @@ class ServerControllerTest extends TestCase
             'ip' => $server->ip,
         ]);
     }
+
+    #[Test]
+    public function a_local_server_can_be_created_without_connection_details()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $this->actingAs($user)->post(route('server.store'), [
+            'name' => 'This box',
+            'type' => Server::TYPE_LOCAL,
+        ])->assertSessionHasNoErrors();
+
+        $server = Server::query()->where('name', 'This box')->first();
+        $this->assertTrue($server->isLocal());
+        $this->assertNull($server->ip);
+        $this->assertTrue($server->isSetUp());
+    }
+
+    #[Test]
+    public function an_ssh_server_requires_connection_details()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $this->actingAs($user)->post(route('server.store'), [
+            'name' => 'Remote box',
+            'type' => Server::TYPE_SSH,
+        ])->assertSessionHasErrors(['user', 'ip', 'port']);
+    }
 }
