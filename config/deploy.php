@@ -44,4 +44,18 @@ return [
 
     'compose_file_pattern' => env('DEPLOY_COMPOSE_FILE', '/srv/server-config/apps/{app}/compose.yml'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Legacy deploy logs
+    |--------------------------------------------------------------------------
+    |
+    | Directory of *.log files written by an external deploy hook (e.g. the
+    | server repo's adnanh webhook to /srv/backups/deploys). When set (and
+    | mounted read-only into the container), the UI offers a read-only
+    | viewer. Leave empty to hide the feature.
+    |
+    */
+
+    'legacy_logs_path' => env('DEPLOY_LEGACY_LOGS_PATH'),
+
 ];

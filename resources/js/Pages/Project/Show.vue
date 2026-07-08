@@ -45,6 +45,8 @@ const saveSettings = () => {
 
 const workflowPendingDeletion = ref(null);
 const deploymentPendingCancellation = ref(null);
+const deploymentPendingRollback = ref(null);
+const rollbackForm = useForm({});
 
 const deploy = () => {
     deployForm.post(route('deployment.store', props.project), { preserveScroll: true });
@@ -63,6 +65,27 @@ const deleteWorkflow = () => {
 
 const confirmCancellation = (deployment) => {
     deploymentPendingCancellation.value = deployment;
+};
+
+// A deployment can be rolled back to when it succeeded, was built from a
+// known commit, and included a Docker deploy step. Instant when its SHA
+// image survived pruning; otherwise the commit is rebuilt from scratch.
+const canRollBackTo = (deployment) =>
+    deployment.status === 'deployed'
+    && deployment.commit_sha
+    && deployment.steps?.some((step) => step.type === 'docker_deploy');
+
+const isInstantRollback = (deployment) => !!(deployment.image && deployment.image_available_at);
+
+const confirmRollback = (deployment) => {
+    deploymentPendingRollback.value = deployment;
+};
+
+const rollBack = () => {
+    rollbackForm.post(route('deployment.rollback', [props.project, deploymentPendingRollback.value]), {
+        preserveScroll: true,
+        onSuccess: () => (deploymentPendingRollback.value = null),
+    });
 };
 
 const cancelDeployment = () => {
@@ -90,6 +113,7 @@ const STEP_META = {
 
 const STEP_TYPE_LABELS = {
     docker_deploy: 'Docker deploy',
+    docker_rollback: 'Docker rollback',
     inline_script: 'Script',
     script_file: 'Script file',
 };
@@ -316,9 +340,31 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         />
                                         {{ STATUS_META[deployment.status].label }}
                                     </span>
+                                    <span
+                                        v-if="deployment.is_rollback"
+                                        class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+                                    >
+                                        Rollback
+                                    </span>
+                                    <span
+                                        v-if="deployment.status === 'deployed' && deployment.image"
+                                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                        :class="isInstantRollback(deployment) ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'"
+                                        :title="isInstantRollback(deployment) ? 'The built image is still on the server' : 'The built image was pruned; rollback rebuilds the commit'"
+                                    >
+                                        {{ isInstantRollback(deployment) ? 'image cached' : 'image pruned' }}
+                                    </span>
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs text-gray-400">{{ fmt(deployment.received_at) }}</span>
+                                    <button
+                                        v-if="canRollBackTo(deployment)"
+                                        type="button"
+                                        class="text-xs font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+                                        @click="confirmRollback(deployment)"
+                                    >
+                                        {{ isInstantRollback(deployment) ? 'Roll back' : 'Roll back (rebuild)' }}
+                                    </button>
                                     <button
                                         v-if="isActive(deployment)"
                                         type="button"
@@ -427,6 +473,38 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                 >
                     Delete
                 </DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <!-- Rollback confirmation -->
+        <ConfirmationModal :show="deploymentPendingRollback !== null" @close="deploymentPendingRollback = null">
+            <template #title>
+                Roll back
+            </template>
+            <template #content>
+                <template v-if="deploymentPendingRollback && isInstantRollback(deploymentPendingRollback)">
+                    Retags the image built for commit
+                    <code class="rounded bg-gray-100 px-1 text-sm">{{ deploymentPendingRollback.commit_sha?.slice(0, 10) }}</code>
+                    as <code class="rounded bg-gray-100 px-1 text-sm">latest</code> and restarts the app — usually seconds.
+                </template>
+                <template v-else-if="deploymentPendingRollback">
+                    The image for commit
+                    <code class="rounded bg-gray-100 px-1 text-sm">{{ deploymentPendingRollback.commit_sha?.slice(0, 10) }}</code>
+                    is no longer on the server, so it will be rebuilt from that exact commit — this takes as long as a normal deployment.
+                </template>
+            </template>
+            <template #footer>
+                <SecondaryButton @click="deploymentPendingRollback = null">
+                    Cancel
+                </SecondaryButton>
+                <PrimaryButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': rollbackForm.processing }"
+                    :disabled="rollbackForm.processing"
+                    @click="rollBack"
+                >
+                    Roll back
+                </PrimaryButton>
             </template>
         </ConfirmationModal>
 

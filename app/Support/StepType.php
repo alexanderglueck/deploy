@@ -21,6 +21,14 @@ class StepType
     const SCRIPT_FILE = 'script_file';
 
     /**
+     * Retag a previously built SHA image back to latest and recreate the
+     * stack. Created by the rollback button, not offered in the editor.
+     */
+    const DOCKER_ROLLBACK = 'docker_rollback';
+
+    /**
+     * The types a workflow editor may configure (docker_rollback is internal).
+     *
      * @return array<int, string>
      */
     public static function all(): array

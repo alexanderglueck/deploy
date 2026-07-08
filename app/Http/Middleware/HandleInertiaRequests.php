@@ -37,7 +37,8 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+            // Shows the legacy-logs nav item when the viewer is configured.
+            'legacyLogsEnabled' => (bool) config('deploy.legacy_logs_path'),
         ];
     }
 }

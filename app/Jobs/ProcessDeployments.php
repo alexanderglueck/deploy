@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Workflow;
 use App\Models\WorkflowStep;
+use App\Steps\DockerDeployScript;
 use App\Steps\StepScriptFactory;
 use App\Support\StepType;
 use Carbon\Carbon;
@@ -133,35 +134,41 @@ class ProcessDeployments implements ShouldQueue
             return;
         }
 
-        $steps = $workflow->steps;
+        // Rollbacks pre-create their steps; everything else runs a snapshot
+        // of the workflow's current steps.
+        $deploymentSteps = $this->deployment->steps()->get();
 
-        // Legacy fallback: workflows saved before steps existed carry their
-        // script in `actions`.
-        if ($steps->isEmpty() && filled($workflow->actions)) {
-            $this->deployment->update(['actions' => $workflow->actions]);
+        if ($deploymentSteps->isEmpty()) {
+            $steps = $workflow->steps;
 
-            $steps = collect([new WorkflowStep([
-                'position' => 1,
-                'type' => StepType::INLINE_SCRIPT,
-                'config' => ['script' => $workflow->actions],
-            ])]);
+            // Legacy fallback: workflows saved before steps existed carry
+            // their script in `actions`.
+            if ($steps->isEmpty() && filled($workflow->actions)) {
+                $this->deployment->update(['actions' => $workflow->actions]);
+
+                $steps = collect([new WorkflowStep([
+                    'position' => 1,
+                    'type' => StepType::INLINE_SCRIPT,
+                    'config' => ['script' => $workflow->actions],
+                ])]);
+            }
+
+            if ($steps->isEmpty()) {
+                $this->markFailed('ERROR: The workflow has no steps.');
+
+                return;
+            }
+
+            // Snapshot the workflow's steps so later edits don't rewrite history.
+            $deploymentSteps = $steps->values()->map(function (WorkflowStep $step, int $index) {
+                return $this->deployment->steps()->create([
+                    'position' => $index + 1,
+                    'type' => $step->type,
+                    'config' => $step->config,
+                    'status' => DeploymentStep::STATUS_PENDING,
+                ]);
+            });
         }
-
-        if ($steps->isEmpty()) {
-            $this->markFailed('ERROR: The workflow has no steps.');
-
-            return;
-        }
-
-        // Snapshot the workflow's steps so later edits don't rewrite history.
-        $deploymentSteps = $steps->values()->map(function (WorkflowStep $step, int $index) {
-            return $this->deployment->steps()->create([
-                'position' => $index + 1,
-                'type' => $step->type,
-                'config' => $step->config,
-                'status' => DeploymentStep::STATUS_PENDING,
-            ]);
-        });
 
         /** @var Server $server */
         $server = $workflow->server;
@@ -208,6 +215,20 @@ class ProcessDeployments implements ShouldQueue
                 $this->markFailed("Step {$step->position} exited with code {$result->exitCode}.");
 
                 return;
+            }
+
+            // Remember the SHA-tagged image the build produced so this
+            // deployment can be rolled back to later.
+            if ($step->type === StepType::DOCKER_DEPLOY) {
+                $image = DockerDeployScript::shaImage($this->deployment, $step->config ?? []);
+
+                if ($image) {
+                    $this->deployment->update([
+                        'image' => $image,
+                        'image_available_at' => Carbon::now(),
+                        'image_checked_at' => Carbon::now(),
+                    ]);
+                }
             }
         }
 

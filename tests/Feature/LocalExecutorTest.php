@@ -42,4 +42,14 @@ class LocalExecutorTest extends TestCase
 
         $this->assertStringContainsString('oops', $result->output);
     }
+
+    #[Test]
+    public function it_runs_under_bash_so_pipefail_works()
+    {
+        // Generated docker deploy scripts start with `set -euo pipefail`,
+        // which plain sh (dash) rejects.
+        $result = (new LocalExecutor(timeout: 10))->run("set -euo pipefail\nfalse | cat");
+
+        $this->assertSame(1, $result->exitCode);
+    }
 }

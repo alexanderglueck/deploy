@@ -6,8 +6,9 @@ use Closure;
 use Illuminate\Support\Facades\Process;
 
 /**
- * Runs scripts on the host the application itself runs on (through the shell,
- * so multi-line scripts behave exactly like the SSH executor's).
+ * Runs scripts on the host the application itself runs on. Scripts run under
+ * bash explicitly — generated deploy scripts use `set -o pipefail`, which
+ * plain sh (dash) rejects.
  */
 class LocalExecutor implements Executor
 {
@@ -18,7 +19,7 @@ class LocalExecutor implements Executor
     public function run(string $script, ?Closure $onOutput = null): ExecutionResult
     {
         $result = Process::timeout($this->timeout)
-            ->run($script, function (string $type, string $buffer) use ($onOutput) {
+            ->run(['bash', '-c', $script], function (string $type, string $buffer) use ($onOutput) {
                 if ($onOutput) {
                     $onOutput($buffer);
                 }

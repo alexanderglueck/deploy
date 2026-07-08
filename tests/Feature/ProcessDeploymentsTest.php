@@ -68,6 +68,57 @@ class ProcessDeploymentsTest extends TestCase
     }
 
     #[Test]
+    public function a_successful_docker_step_stamps_the_sha_image()
+    {
+        ExecutorFactory::fake();
+
+        $server = Server::factory()->local()->create();
+        $project = Project::factory()->create(['team_id' => $server->team_id]);
+        $workflow = Workflow::factory()->create([
+            'project_id' => $project->id,
+            'server_id' => $server->id,
+            'actions' => null,
+        ]);
+        $workflow->steps()->create(['position' => 1, 'type' => StepType::DOCKER_DEPLOY, 'config' => []]);
+
+        $deployment = Deployment::factory()->create([
+            'project_id' => $project->id,
+            'repository' => 'jondoe/my.app',
+            'commit_sha' => 'abc123',
+            'actions' => null,
+            'received_at' => now(),
+        ]);
+
+        ProcessDeployments::dispatchSync($deployment);
+
+        $deployment->refresh();
+        $this->assertSame('deployed', $deployment->status);
+        $this->assertSame('my-app:abc123', $deployment->image);
+        $this->assertNotNull($deployment->image_available_at);
+    }
+
+    #[Test]
+    public function pre_created_steps_are_used_instead_of_the_workflow_snapshot()
+    {
+        $executor = ExecutorFactory::fake();
+
+        $deployment = $this->deployment(); // workflow carries legacy actions
+        $deployment->steps()->create([
+            'position' => 1,
+            'type' => StepType::INLINE_SCRIPT,
+            'config' => ['script' => 'echo rollback'],
+            'status' => DeploymentStep::STATUS_PENDING,
+        ]);
+
+        ProcessDeployments::dispatchSync($deployment);
+
+        $deployment->refresh();
+        $this->assertSame('deployed', $deployment->status);
+        $this->assertCount(1, $deployment->steps);
+        $this->assertSame(['echo rollback'], $executor->scripts);
+    }
+
+    #[Test]
     public function a_failing_step_skips_the_remaining_steps()
     {
         ExecutorFactory::fake(exitCode: 1, output: 'boom');

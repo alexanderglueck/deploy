@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ReconcileImageAvailability;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,12 +16,20 @@ class ProjectController extends Controller
     {
         $this->ensureOwnedByCurrentTeam($request, $project->team_id);
 
+        // Refresh which past images still exist (for the rollback buttons),
+        // at most once per few minutes per project.
+        if ($project->deployments()->whereNotNull('image')->exists()
+            && Cache::add("reconcile-images:{$project->id}", true, 300)) {
+            ReconcileImageAvailability::dispatch($project);
+        }
+
         return Inertia::render('Project/Show', [
             'project' => $project,
             // The secret is hidden from serialization; the setup card needs it.
             'webhookSecret' => $project->webhook_secret,
             'workflows' => $project->workflows()->with(['server', 'steps'])->get(),
-            'deployments' => $project->deployments()->with(['log', 'steps'])->get(),
+            // Bounded so the 3s polling payload stays small.
+            'deployments' => $project->deployments()->with(['log', 'steps'])->limit(25)->get(),
         ]);
     }
 

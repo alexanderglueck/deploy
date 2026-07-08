@@ -170,9 +170,15 @@ Team ─┬─ Project ── Workflow (event → server → steps) ── Workf
 3. **M3 — Packaging**: FrankenPHP production image, SQLite default, GHCR Actions,
    `tools/deploy/` in the server repo, docs (standalone + server-repo installs), remove
    `deploy-app` from adnanh hooks.
-4. **M4 — Polish**: rollback button (see below), adnanh log viewer,
-   SSE log streaming, absorb `deploy-server-config` (detached-helper pattern), retire
-   adnanh entirely.
+4. **M4 — Polish** ✅ *(rollback + log viewer done 2026-07-08)*: rollback button
+   (see below) and the adnanh log viewer (`DEPLOY_LEGACY_LOGS_PATH`) are done.
+   **SSE log streaming: deliberately deferred** — FrankenPHP runs in classic mode,
+   so each open SSE connection would pin a PHP process for its lifetime; the 3s
+   Inertia polling (payload now bounded to the latest 25 deployments) is simpler
+   and fine for a personal tool. Revisit only with Octane/worker mode or many
+   concurrent viewers. **Absorbing `deploy-server-config` / retiring adnanh:
+   deferred until the manager has run in production for a while** — the thing
+   that recreates the deploy manager should stay dumber than the manager.
 
 ### Rollback vs. image pruning
 

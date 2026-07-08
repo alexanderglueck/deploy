@@ -73,6 +73,18 @@ class DockerDeployScriptTest extends TestCase
     }
 
     #[Test]
+    public function a_rebuild_rollback_fetches_the_exact_commit()
+    {
+        $script = DockerDeployScript::generate($this->deployment(), ['checkout_sha' => true]);
+
+        $this->assertStringNotContainsString('git clone', $script);
+        $this->assertStringContainsString("git -C \"\$BUILD_DIR\" fetch -q --depth 1 origin 'abc123def456'", $script);
+        $this->assertStringContainsString('checkout -q --detach FETCH_HEAD', $script);
+        // Still tags the rebuilt image with the commit SHA.
+        $this->assertStringContainsString("-t 'my-app:abc123def456'", $script);
+    }
+
+    #[Test]
     public function a_manual_deploy_clones_the_default_branch_without_sha_tags()
     {
         $deployment = $this->deployment([

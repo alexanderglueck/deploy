@@ -20,6 +20,10 @@ class Deployment extends Model
         'ref',
         'repository',
         'commit_sha',
+        'image',
+        'image_available_at',
+        'image_checked_at',
+        'rollback_of_id',
         'actions',
         'received_at',
         'processed_at',
@@ -35,6 +39,7 @@ class Deployment extends Model
      */
     protected $appends = [
         'status',
+        'is_rollback',
     ];
 
     /**
@@ -43,6 +48,7 @@ class Deployment extends Model
     protected $hidden = [
         'id',
         'project_id',
+        'rollback_of_id',
     ];
 
     protected function casts(): array
@@ -53,7 +59,31 @@ class Deployment extends Model
             'deployed_at' => 'datetime',
             'failed_at' => 'datetime',
             'canceled_at' => 'datetime',
+            'image_available_at' => 'datetime',
+            'image_checked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return Attribute<bool, never>
+     */
+    protected function isRollback(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->rollback_of_id !== null);
+    }
+
+    /**
+     * Whether the SHA-tagged image is (as of the last reconcile) still
+     * present on the target, making an instant rollback possible.
+     */
+    public function hasAvailableImage(): bool
+    {
+        return $this->image !== null && $this->image_available_at !== null;
+    }
+
+    public function rollbackOf()
+    {
+        return $this->belongsTo(self::class, 'rollback_of_id');
     }
 
     /**

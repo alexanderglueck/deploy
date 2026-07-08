@@ -20,6 +20,7 @@ class StepScriptFactory
             StepType::INLINE_SCRIPT => self::inlineScript($config),
             StepType::SCRIPT_FILE => self::scriptFile($config),
             StepType::DOCKER_DEPLOY => DockerDeployScript::generate($step->deployment, $config),
+            StepType::DOCKER_ROLLBACK => DockerRollbackScript::generate($step->deployment, $config),
             default => throw new InvalidArgumentException("Unknown step type [{$step->type}]."),
         };
     }

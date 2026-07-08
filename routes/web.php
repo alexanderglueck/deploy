@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\DeploymentRollbackController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LegacyLogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
@@ -45,7 +47,15 @@ Route::middleware([
         Route::put('/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'update'])->name('workflow.update');
 
         Route::post('/projects/{project}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployment.cancel');
+        Route::post('/projects/{project}/deployments/{deployment}/rollback', [DeploymentRollbackController::class, 'store'])->name('deployment.rollback');
     });
 
     Route::post('/deploy/{project:deploy_endpoint}', [DeploymentController::class, 'store'])->name('deployment.store');
+
+    // Read-only viewer for logs written by an external deploy hook
+    // (hidden unless deploy.legacy_logs_path is configured).
+    Route::get('/legacy-logs', [LegacyLogController::class, 'index'])->name('legacy-log.index');
+    Route::get('/legacy-logs/{file}', [LegacyLogController::class, 'show'])
+        ->where('file', '[\w][\w.-]*\.log')
+        ->name('legacy-log.show');
 });

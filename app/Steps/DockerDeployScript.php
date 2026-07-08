@@ -15,23 +15,46 @@ use Illuminate\Support\Str;
 class DockerDeployScript
 {
     /**
+     * The image tags and compose path derive from the app name: the
+     * repository name with dots turned into dashes, unless overridden.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public static function appName(Deployment $deployment, array $config): string
+    {
+        return $config['app'] ?? str_replace('.', '-', Str::afterLast($deployment->repository, '/'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    public static function composeFile(Deployment $deployment, array $config): string
+    {
+        return $config['compose_file']
+            ?? str_replace('{app}', self::appName($deployment, $config), config('deploy.compose_file_pattern'));
+    }
+
+    /**
+     * The SHA-tagged image this step produces (used for rollbacks), or null
+     * when the deployment has no commit SHA to tag with.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    public static function shaImage(Deployment $deployment, array $config): ?string
+    {
+        return $deployment->commit_sha
+            ? self::appName($deployment, $config).':'.$deployment->commit_sha
+            : null;
+    }
+
+    /**
      * @param  array<string, mixed>  $config
      */
     public static function generate(Deployment $deployment, array $config): string
     {
         $repository = $deployment->repository;
-
-        // The app name drives image tags and the compose path convention.
-        $app = $config['app'] ?? str_replace('.', '-', Str::afterLast($repository, '/'));
-
-        $composeFile = $config['compose_file']
-            ?? str_replace('{app}', $app, config('deploy.compose_file_pattern'));
-
-        // Only real branch refs are cloned explicitly; anything else (e.g. a
-        // manual deploy) clones the repository's default branch.
-        $branch = Str::startsWith($deployment->ref, 'refs/heads/')
-            ? Str::after($deployment->ref, 'refs/heads/')
-            : null;
+        $app = self::appName($deployment, $config);
+        $composeFile = self::composeFile($deployment, $config);
 
         $sha = $deployment->commit_sha;
         $target = $config['target'] ?? null;
@@ -47,10 +70,10 @@ class DockerDeployScript
         $shaTagWeb = $sha ? ' -t '.escapeshellarg($app.'-web:'.$sha) : '';
 
         $appQ = escapeshellarg($app);
-        $branchFlag = $branch ? '--branch '.escapeshellarg($branch).' ' : '';
-        $branchLabel = $branch ?? 'default branch';
         $cloneUrlQ = escapeshellarg($cloneUrl);
         $composeFileQ = escapeshellarg($composeFile);
+
+        $checkout = self::checkoutCommands($deployment, $config, $cloneUrlQ);
 
         return <<<BASH
         set -euo pipefail
@@ -60,8 +83,7 @@ class DockerDeployScript
         cleanup() { rm -rf "\$BUILD_DIR"; }
         trap cleanup EXIT
 
-        echo "Cloning {$repository} ({$branchLabel})..."
-        git clone --quiet --depth 1 {$branchFlag}{$cloneUrlQ} "\$BUILD_DIR"
+        {$checkout}
         cd "\$BUILD_DIR"
 
         echo "Building image {$app}..."
@@ -85,6 +107,42 @@ class DockerDeployScript
         docker compose -f {$composeFileQ} up -d
 
         echo "Deployed {$app}."
+        BASH;
+    }
+
+    /**
+     * How the build dir gets its sources. Rollback rebuilds fetch the exact
+     * recorded commit; normal deploys clone the pushed branch (or the remote
+     * default branch when the ref isn't a branch, e.g. manual deploys).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private static function checkoutCommands(Deployment $deployment, array $config, string $cloneUrlQ): string
+    {
+        $repository = $deployment->repository;
+
+        if (($config['checkout_sha'] ?? false) && $deployment->commit_sha) {
+            $shaQ = escapeshellarg($deployment->commit_sha);
+
+            return <<<BASH
+            echo "Fetching {$repository} at {$deployment->commit_sha}..."
+            git init -q "\$BUILD_DIR"
+            git -C "\$BUILD_DIR" remote add origin {$cloneUrlQ}
+            git -C "\$BUILD_DIR" fetch -q --depth 1 origin {$shaQ}
+            git -C "\$BUILD_DIR" checkout -q --detach FETCH_HEAD
+            BASH;
+        }
+
+        $branch = Str::startsWith($deployment->ref, 'refs/heads/')
+            ? Str::after($deployment->ref, 'refs/heads/')
+            : null;
+
+        $branchFlag = $branch ? '--branch '.escapeshellarg($branch).' ' : '';
+        $branchLabel = $branch ?? 'default branch';
+
+        return <<<BASH
+        echo "Cloning {$repository} ({$branchLabel})..."
+        git clone --quiet --depth 1 {$branchFlag}{$cloneUrlQ} "\$BUILD_DIR"
         BASH;
     }
 }

@@ -57,6 +57,9 @@ const logout = () => {
                                 <NavLink :href="route('server.index')" :active="route().current('server.*')">
                                     Servers
                                 </NavLink>
+                                <NavLink v-if="$page.props.legacyLogsEnabled" :href="route('legacy-log.index')" :active="route().current('legacy-log.*')">
+                                    Legacy logs
+                                </NavLink>
                             </div>
                         </div>
 
@@ -205,6 +208,9 @@ const logout = () => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('server.index')" :active="route().current('server.*')">
                             Servers
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.legacyLogsEnabled" :href="route('legacy-log.index')" :active="route().current('legacy-log.*')">
+                            Legacy logs
                         </ResponsiveNavLink>
                     </div>
 
