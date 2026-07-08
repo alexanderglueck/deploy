@@ -1,9 +1,13 @@
 <?php
 
+use App\Http\Controllers\ContainerActionController;
+use App\Http\Controllers\ContainerController;
+use App\Http\Controllers\ContainerLogController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\DeploymentOutputController;
 use App\Http\Controllers\DeploymentRetryController;
 use App\Http\Controllers\DeploymentRollbackController;
+use App\Http\Controllers\DockerController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LegacyLogController;
 use App\Http\Controllers\PageController;
@@ -40,6 +44,20 @@ Route::middleware([
     Route::post('/servers/{server}/setup', [ServerSetupController::class, 'store'])->name('server.setup.store');
     Route::post('/servers/{server}/test-connection', [ServerConnectionTestController::class, 'store'])->name('server.test.store');
     Route::post('/servers/{server}/regenerate-key', [ServerKeyController::class, 'store'])->name('server.key.store');
+
+    // Docker dashboard: containers + images per server, with lifecycle
+    // actions and log tailing. Container names are constrained to Docker's
+    // reference charset (no slashes needed for names).
+    Route::get('/docker', [DockerController::class, 'index'])->name('docker.index');
+    Route::get('/servers/{server}/containers/{name}', [ContainerController::class, 'show'])
+        ->where('name', '[A-Za-z0-9][A-Za-z0-9_.-]*')
+        ->name('container.show');
+    Route::get('/servers/{server}/containers/{name}/logs', [ContainerLogController::class, 'show'])
+        ->where('name', '[A-Za-z0-9][A-Za-z0-9_.-]*')
+        ->name('container.logs');
+    Route::post('/servers/{server}/containers/{name}/action', [ContainerActionController::class, 'store'])
+        ->where('name', '[A-Za-z0-9][A-Za-z0-9_.-]*')
+        ->name('container.action');
 
     Route::get('/projects/create', [ProjectController::class, 'create'])->name('project.create');
     Route::post('/projects', [ProjectController::class, 'store'])->name('project.store');

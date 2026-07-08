@@ -32,6 +32,9 @@ record of every deployment.
   **retry** (pinned to the failed run's commit), and **rollback** (instant
   image retag while the SHA image survives pruning, rebuild-from-commit after);
   a copyable GitHub Actions trigger snippet per project.
+- **Docker dashboard** — per-server view of containers (state, why/when they
+  exited, ports) and images, with start/stop/restart and log tailing. Works on
+  the local host and remote SSH servers through the same mechanism.
 - **Queue-based** — deployments run on a worker with a per-project lock;
   superseded pending deployments are auto-canceled.
 - **Housekeeping** — optional failure notifications (`DEPLOY_NOTIFY_URL` gets a
@@ -54,6 +57,10 @@ services:
     volumes:
       - deploy-storage:/app/storage
       - deploy-db:/data       # SQLite lives here (see env below)
+      # Powers the Docker dashboard for the local server. Root-equivalent —
+      # only add it if you deploy to / manage this host, and keep the UI
+      # behind authentication.
+      - /var/run/docker.sock:/var/run/docker.sock
 
   worker:
     image: ghcr.io/alexanderglueck/deploy:latest
@@ -63,7 +70,7 @@ services:
     volumes:
       - deploy-storage:/app/storage
       - deploy-db:/data
-      # Root-equivalent: only add this if you use Docker deploy steps.
+      # Root-equivalent: needed for Docker deploy steps on the local server.
       - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
@@ -100,10 +107,11 @@ Back up **both** the database and your `APP_KEY`: server SSH keys and webhook
 secrets are encrypted with the key, so a database backup without it is
 unusable.
 
-> **Security note:** anything that can trigger builds through the Docker
-> socket is root-equivalent on the host. Keep the UI behind additional
-> authentication (e.g. Cloudflare Access) and treat the worker container
-> accordingly. Deployed apps run in their own containers.
+> **Security note:** both containers mount the Docker socket (the worker for
+> builds, the web app for the Docker dashboard), which is root-equivalent on
+> the host. Keep the UI behind additional authentication (e.g. Cloudflare
+> Access) — anyone who reaches it can control every container on the box.
+> Deployed apps run in their own containers.
 
 ## Development
 

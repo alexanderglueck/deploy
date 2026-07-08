@@ -57,6 +57,9 @@ const logout = () => {
                                 <NavLink :href="route('server.index')" :active="route().current('server.*')">
                                     Servers
                                 </NavLink>
+                                <NavLink :href="route('docker.index')" :active="route().current('docker.*') || route().current('container.*')">
+                                    Docker
+                                </NavLink>
                                 <NavLink v-if="$page.props.legacyLogsEnabled" :href="route('legacy-log.index')" :active="route().current('legacy-log.*')">
                                     Legacy logs
                                 </NavLink>
@@ -208,6 +211,9 @@ const logout = () => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('server.index')" :active="route().current('server.*')">
                             Servers
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('docker.index')" :active="route().current('docker.*') || route().current('container.*')">
+                            Docker
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.legacyLogsEnabled" :href="route('legacy-log.index')" :active="route().current('legacy-log.*')">
                             Legacy logs
