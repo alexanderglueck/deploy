@@ -3,7 +3,7 @@
     "type": "project",
     "description": "Deploy — a self-hosted deployment solution.",
     "keywords": ["laravel", "framework", "deploy"],
-    "license": "MIT",
+    "license": "AGPL-3.0-only",
     "require": {
         "php": "^8.5",
         "ext-pdo": "*",

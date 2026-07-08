@@ -102,3 +102,12 @@ vendor/bin/phpunit
 | Build target | none | step config `target` |
 | Compose file | `DEPLOY_COMPOSE_FILE` pattern (`{app}` placeholder) | step config `compose_file` |
 | Clone URL | `DEPLOY_GIT_BASE` + repository + `DEPLOY_GIT_TOKEN` | — |
+
+## License
+
+Copyright (C) 2026 Alexander Glück
+
+Licensed under the [GNU Affero General Public License v3.0](LICENSE)
+(AGPL-3.0-only). You can use, self-host, and modify it freely; if you run a
+modified version as a network service, you must offer its source to that
+service's users.
