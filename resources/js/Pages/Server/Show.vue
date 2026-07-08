@@ -17,16 +17,22 @@ const form = useForm({
     password: '',
 });
 
+const testForm = useForm({});
+
+// The two forms are alternative paths to the same goal; a success on either
+// makes the other's leftover error stale, so clear it.
 const submit = () => {
     form.post(route('server.setup.store', props.server), {
         onFinish: () => form.reset('password'),
+        onSuccess: () => testForm.clearErrors(),
     });
 };
 
-const testForm = useForm({});
-
 const testConnection = () => {
-    testForm.post(route('server.test.store', props.server), { preserveScroll: true });
+    testForm.post(route('server.test.store', props.server), {
+        preserveScroll: true,
+        onSuccess: () => form.clearErrors(),
+    });
 };
 
 const copied = ref(false);
@@ -104,24 +110,31 @@ const copyPublicKey = async () => {
                     </div>
                 </div>
 
-                <div v-if="server.type === 'ssh' && !isSetUp" class="bg-white shadow sm:rounded-lg p-6">
-                    <h3 class="font-medium text-gray-700 mb-4">Set up server</h3>
-                    <p class="mb-4 text-sm text-gray-500">
-                        Logs in once with the password and appends the public key above to
-                        the user's authorized keys. The password is not stored.
-                    </p>
-                    <form class="space-y-4" @submit.prevent="submit">
-                        <div>
-                            <InputLabel for="password" :value="`Server password for user ${server.user}`" />
-                            <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full" required />
-                            <InputError :message="form.errors.password" class="mt-2" />
+                <div v-if="server.type === 'ssh'" class="bg-white shadow sm:rounded-lg">
+                    <details :open="!isSetUp">
+                        <summary class="cursor-pointer px-6 py-4 font-medium text-gray-700">
+                            {{ isSetUp ? 'Re-run key setup' : 'Set up server' }}
+                        </summary>
+                        <div class="px-6 pb-6">
+                            <p class="mb-4 text-sm text-gray-500">
+                                Logs in once with the password, appends the public key above to
+                                the user's authorized keys, and verifies a key login before
+                                marking the server as set up. The password is not stored.
+                            </p>
+                            <form class="space-y-4" @submit.prevent="submit">
+                                <div>
+                                    <InputLabel for="password" :value="`Server password for user ${server.user}`" />
+                                    <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full" required />
+                                    <InputError :message="form.errors.password" class="mt-2" />
+                                </div>
+                                <div class="flex justify-end">
+                                    <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                                        Setup
+                                    </PrimaryButton>
+                                </div>
+                            </form>
                         </div>
-                        <div class="flex justify-end">
-                            <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                                Setup
-                            </PrimaryButton>
-                        </div>
-                    </form>
+                    </details>
                 </div>
             </div>
         </div>

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicUlid;
 use App\SSH\Connection;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,9 +70,10 @@ class Server extends Model
 
     /**
      * Install this server's public key by logging in with a password once.
-     * Alternative to adding the key to authorized_keys manually.
+     * Alternative to adding the key to authorized_keys manually. Idempotent;
+     * only marks the server as set up after verifying the key actually works.
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function copyPublicKey($password)
     {
@@ -79,25 +81,36 @@ class Server extends Model
             return;
         }
 
-        $connection = (new Connection($this->ip, $this->port, $this->user))
+        $connection = (new Connection($this->ip, $this->port, $this->user, 30))
             ->usingPassword($password)
             ->connect();
 
-        $remotePublicFile = '/tmp/deploy-public-key-'.md5($this->public_key);
+        // Append the key in one shell command (no SCP: legacy protocol,
+        // frequently unavailable on modern hosts) unless it is already there.
+        $key = escapeshellarg(trim($this->public_key));
 
-        // Upload public key
-        $connection->uploadContent($this->public_key."\n", $remotePublicFile);
+        $connection->run(
+            "mkdir -p ~/.ssh\n"
+            ."chmod 700 ~/.ssh\n"
+            ."touch ~/.ssh/authorized_keys\n"
+            ."chmod 600 ~/.ssh/authorized_keys\n"
+            ."grep -qxF {$key} ~/.ssh/authorized_keys || printf '%s\\n' {$key} >> ~/.ssh/authorized_keys"
+        );
 
-        // Add public key to authorized_keys
-        $connection->run('mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys');
-        $connection->run("cat $remotePublicFile >> ~/.ssh/authorized_keys");
-        $connection->run('chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys');
-        $connection->run("chown -R {$this->user}:{$this->user} ~/.ssh");
-
-        // Remove public key
-        $connection->run("rm $remotePublicFile");
+        $exitStatus = $connection->getExitStatus();
+        $error = $connection->getError();
 
         $connection->disconnect();
+
+        if ($exitStatus !== false && $exitStatus !== 0) {
+            throw new Exception('Could not install the public key (exit '.$exitStatus.'): '.trim((string) $error));
+        }
+
+        // The only proof that setup worked is a successful key login.
+        $verification = (new Connection($this->ip, $this->port, $this->user, 15))
+            ->usingPrivateKey($this->private_key)
+            ->connect();
+        $verification->disconnect();
 
         $this->update([
             'setup_at' => Carbon::now(),

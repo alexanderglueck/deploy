@@ -4,7 +4,6 @@ namespace App\SSH;
 
 use Exception;
 use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Net\SCP;
 use phpseclib3\Net\SSH2;
 
 class Connection
@@ -106,24 +105,6 @@ class Connection
         $this->connection->disconnect();
 
         $this->connection = null;
-    }
-
-    /**
-     * @return bool
-     */
-    public function upload($localPath, $remotePath)
-    {
-        return (new SCP($this->connection))->put($remotePath, $localPath, SCP::SOURCE_LOCAL_FILE);
-    }
-
-    /**
-     * Write a string to a remote file.
-     *
-     * @return bool
-     */
-    public function uploadContent($content, $remotePath)
-    {
-        return (new SCP($this->connection))->put($remotePath, $content, SCP::SOURCE_STRING);
     }
 
     /**

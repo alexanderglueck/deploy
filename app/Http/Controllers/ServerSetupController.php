@@ -17,10 +17,8 @@ class ServerSetupController extends Controller
             'password' => 'required',
         ]);
 
-        if ($server->isSetUp()) {
-            return redirect()->route('server.show', $server);
-        }
-
+        // Deliberately re-runnable: installation is idempotent, and a server
+        // may have been marked set up while the key later stopped working.
         try {
             $server->copyPublicKey($request->input('password'));
         } catch (Exception $e) {
@@ -28,6 +26,7 @@ class ServerSetupController extends Controller
                 ->withErrors(['password' => $e->getMessage()]);
         }
 
-        return redirect()->route('server.show', $server);
+        return redirect()->route('server.show', $server)
+            ->banner('Public key installed and verified.');
     }
 }
