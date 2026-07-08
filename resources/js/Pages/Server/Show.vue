@@ -23,6 +23,12 @@ const submit = () => {
     });
 };
 
+const testForm = useForm({});
+
+const testConnection = () => {
+    testForm.post(route('server.test.store', props.server), { preserveScroll: true });
+};
+
 const copied = ref(false);
 
 const copyPublicKey = async () => {
@@ -59,11 +65,21 @@ const copyPublicKey = async () => {
                             <dd class="col-span-2 text-gray-800">{{ server.port }}</dd>
                         </template>
                         <dt class="font-medium text-gray-500">Status</dt>
-                        <dd class="col-span-2">
+                        <dd class="col-span-2 flex items-center gap-3">
                             <span v-if="isSetUp" class="text-green-600 font-medium">Set up</span>
                             <span v-else class="text-amber-600 font-medium">Not set up</span>
+                            <SecondaryButton
+                                v-if="server.type === 'ssh'"
+                                type="button"
+                                :class="{ 'opacity-25': testForm.processing }"
+                                :disabled="testForm.processing"
+                                @click="testConnection"
+                            >
+                                {{ testForm.processing ? 'Testing…' : 'Test connection' }}
+                            </SecondaryButton>
                         </dd>
                     </dl>
+                    <InputError :message="testForm.errors.connection" class="mt-3" />
                 </div>
 
                 <div v-if="server.type === 'local'" class="bg-white shadow sm:rounded-lg p-6 text-sm text-gray-600">
@@ -76,7 +92,8 @@ const copyPublicKey = async () => {
                     <p class="mt-1 text-sm text-gray-500">
                         This server has its own keypair. Add the public key to
                         <code class="rounded bg-gray-100 px-1">~/.ssh/authorized_keys</code>
-                        for the <code class="rounded bg-gray-100 px-1">{{ server.user }}</code> user —
+                        for the <code class="rounded bg-gray-100 px-1">{{ server.user }}</code> user
+                        and click "Test connection" to verify and mark the server as set up —
                         or use the password setup below to install it automatically.
                     </p>
                     <div class="mt-3 flex items-start gap-2">

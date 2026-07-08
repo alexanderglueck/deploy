@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LegacyLogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ServerConnectionTestController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\ServerSetupController;
 use App\Http\Controllers\TeamController;
@@ -31,6 +32,7 @@ Route::middleware([
     Route::post('/servers', [ServerController::class, 'store'])->name('server.store');
     Route::get('/servers/{server}', [ServerController::class, 'show'])->name('server.show');
     Route::post('/servers/{server}/setup', [ServerSetupController::class, 'store'])->name('server.setup.store');
+    Route::post('/servers/{server}/test-connection', [ServerConnectionTestController::class, 'store'])->name('server.test.store');
 
     Route::get('/projects/create', [ProjectController::class, 'create'])->name('project.create');
     Route::post('/projects', [ProjectController::class, 'store'])->name('project.store');

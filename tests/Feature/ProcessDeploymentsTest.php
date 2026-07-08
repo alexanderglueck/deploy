@@ -203,7 +203,7 @@ class ProcessDeploymentsTest extends TestCase
     {
         app()->instance(ExecutorFactory::class, new class extends ExecutorFactory
         {
-            public function for(Server $server): Executor
+            public function for(Server $server, ?int $timeout = null): Executor
             {
                 return new class implements Executor
                 {

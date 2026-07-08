@@ -6,9 +6,9 @@ use App\Models\Server;
 
 class ExecutorFactory
 {
-    public function for(Server $server): Executor
+    public function for(Server $server, ?int $timeout = null): Executor
     {
-        $timeout = (int) config('deploy.timeout');
+        $timeout ??= (int) config('deploy.timeout');
 
         return $server->isLocal()
             ? new LocalExecutor($timeout)
@@ -26,7 +26,7 @@ class ExecutorFactory
         {
             public function __construct(private readonly FakeExecutor $fake) {}
 
-            public function for(Server $server): Executor
+            public function for(Server $server, ?int $timeout = null): Executor
             {
                 return $this->fake;
             }
