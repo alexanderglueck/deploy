@@ -11,11 +11,14 @@ record of every deployment.
 ## What it does
 
 - **Webhook receiver** — one endpoint per project, verified with a per-project
-  secret (GitHub `X-Hub-Signature-256` HMAC, or an `X-Deploy-Secret` header for
-  generic callers). GitHub pings are answered, payload repository must match
-  the project.
-- **Workflows as steps** — a workflow maps an event (push) to a target server
-  and an ordered list of steps:
+  secret. GitHub (`X-Hub-Signature-256`), Gitea (`X-Gitea-Signature`), GitLab
+  (`X-Gitlab-Token`), and generic callers (`X-Deploy-Secret`) are supported;
+  pings are answered and the payload repository must match the project.
+- **Branch filtering** — workflows deploy the repository's default branch by
+  default; pin them to a specific branch or `*` for all. Pushes no workflow
+  cares about are ignored, not queued.
+- **Workflows as steps** — a workflow maps an event (push) + branch to a
+  target server and an ordered list of steps:
   - **Docker deploy**: shallow-clone the pushed repo, build
     `deploy/build.sh` → `Dockerfile.dist` → `Dockerfile`, tag `latest` **and
     the commit SHA**, optionally build a `docker/nginx.Dockerfile` companion
@@ -25,10 +28,15 @@ record of every deployment.
 - **Targets** — steps run locally (Docker socket) or on a remote server over
   SSH; every SSH server gets its own generated Ed25519 keypair.
 - **UI** — deployment history with per-step status, duration, exit codes and
-  live ANSI-colored output; manual deploys (configurable branch); cancellation;
+  live ANSI-colored output; manual deploys (configurable branch); cancellation,
+  **retry** (pinned to the failed run's commit), and **rollback** (instant
+  image retag while the SHA image survives pruning, rebuild-from-commit after);
   a copyable GitHub Actions trigger snippet per project.
 - **Queue-based** — deployments run on a worker with a per-project lock;
   superseded pending deployments are auto-canceled.
+- **Housekeeping** — optional failure notifications (`DEPLOY_NOTIFY_URL` gets a
+  JSON POST — ntfy, Slack, healthchecks.io, ...) and automatic retention
+  pruning (`DEPLOY_RETENTION_DAYS`, default 100).
 
 ## Running it
 
@@ -72,13 +80,25 @@ DB_CONNECTION=sqlite
 DB_DATABASE=/data/deploy.sqlite
 QUEUE_CONNECTION=database
 AUTO_MIGRATE=1      # migrate on container start (updates = pull + restart)
-REGISTRATION_ENABLED=true   # register your account, then set to false
 DEPLOY_GIT_TOKEN=   # token for cloning private repos (contents:read)
+DEPLOY_NOTIFY_URL=  # optional: JSON POST here when a deployment fails
 ```
 
 `AUTO_MIGRATE=1` creates/updates the schema on start (`--isolated`, so app and
-worker don't race). Register your user, then turn `REGISTRATION_ENABLED` back
-off.
+worker don't race). Then create your account:
+
+```sh
+docker compose exec deploy php artisan deploy:user
+```
+
+(Self-service registration stays disabled unless you set
+`REGISTRATION_ENABLED=true`.)
+
+### Backups
+
+Back up **both** the database and your `APP_KEY`: server SSH keys and webhook
+secrets are encrypted with the key, so a database backup without it is
+unusable.
 
 > **Security note:** anything that can trigger builds through the Docker
 > socket is root-equivalent on the host. Keep the UI behind additional

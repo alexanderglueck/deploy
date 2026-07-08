@@ -18,20 +18,22 @@ class HomeController extends Controller
 
         $projectIds = $team->projects()->pluck('id');
 
+        // Recent = concluded, successfully or not.
         $recentDeployments = Deployment::query()
             ->whereIn('project_id', $projectIds)
             ->whereNull('canceled_at')
-            ->whereNotNull('deployed_at')
+            ->where(fn ($query) => $query->whereNotNull('deployed_at')->orWhereNotNull('failed_at'))
             ->with('project')
             ->latest()
             ->limit(5)
             ->get();
 
-        // In-progress = queued or running (not yet finished, not canceled).
+        // In-progress = queued or running (not finished, failed, or canceled).
         $currentDeployments = Deployment::query()
             ->whereIn('project_id', $projectIds)
             ->whereNull('canceled_at')
             ->whereNull('deployed_at')
+            ->whereNull('failed_at')
             ->with('project')
             ->latest()
             ->limit(5)

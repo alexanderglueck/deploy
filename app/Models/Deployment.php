@@ -18,12 +18,15 @@ class Deployment extends Model
         'project_id',
         'event',
         'ref',
+        'default_branch',
         'repository',
         'commit_sha',
         'image',
         'image_available_at',
         'image_checked_at',
         'rollback_of_id',
+        'retry_of_id',
+        'triggered_by',
         'actions',
         'received_at',
         'processed_at',
@@ -40,6 +43,8 @@ class Deployment extends Model
     protected $appends = [
         'status',
         'is_rollback',
+        'is_retry',
+        'triggered_by_name',
     ];
 
     /**
@@ -49,6 +54,8 @@ class Deployment extends Model
         'id',
         'project_id',
         'rollback_of_id',
+        'retry_of_id',
+        'triggered_by',
     ];
 
     protected function casts(): array
@@ -70,6 +77,34 @@ class Deployment extends Model
     protected function isRollback(): Attribute
     {
         return Attribute::get(fn (): bool => $this->rollback_of_id !== null);
+    }
+
+    /**
+     * @return Attribute<bool, never>
+     */
+    protected function isRetry(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->retry_of_id !== null);
+    }
+
+    /**
+     * Who triggered this deployment: a user's name, or null for webhooks.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function triggeredByName(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->triggeredBy?->name);
+    }
+
+    public function triggeredBy()
+    {
+        return $this->belongsTo(User::class, 'triggered_by');
+    }
+
+    public function retryOf()
+    {
+        return $this->belongsTo(self::class, 'retry_of_id');
     }
 
     /**

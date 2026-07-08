@@ -3,23 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessDeployments;
+use App\Jobs\PruneDeployments;
 use App\Models\Deployment;
 use App\Models\Project;
+use App\Models\Workflow;
 use App\Support\Event;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ApiDeploymentController extends Controller
 {
     public function store(Request $request, Project $project): string
     {
-        $data = $request->hasHeader('X-GitHub-Event')
-            ? $this->fromGitHub($request, $project)
-            : $this->fromGeneric($request, $project);
+        $data = match (true) {
+            $request->hasHeader('X-Gitlab-Event') => $this->fromGitLab($request, $project),
+            // Gitea sends GitHub-compatible headers and payloads.
+            $request->hasHeader('X-GitHub-Event') => $this->fromGitHub($request, $project),
+            default => $this->fromGeneric($request, $project),
+        };
 
         if ($data === null) {
             // Acknowledged but nothing to deploy (e.g. GitHub's ping event).
             return 'PONG';
+        }
+
+        // Pushes no workflow cares about (e.g. feature branches) are ignored
+        // instead of piling up failed deployments for every push.
+        $probe = new Deployment($data);
+        $probe->setRelation('project', $project);
+
+        $matches = $project->workflows()
+            ->where('event', $data['event'])
+            ->get()
+            ->contains(fn (Workflow $workflow) => $workflow->matchesBranch($probe));
+
+        if (! $matches) {
+            return 'IGNORED';
         }
 
         // Cancel older pending deployments
@@ -40,11 +60,16 @@ class ApiDeploymentController extends Controller
         // Queue new pending deployment
         ProcessDeployments::dispatch(Deployment::create($data));
 
+        // Piggy-back retention pruning on webhook traffic, at most once a day.
+        if (Cache::add('deploy:prune-scheduled', true, 60 * 60 * 24)) {
+            PruneDeployments::dispatch();
+        }
+
         return 'OK';
     }
 
     /**
-     * Extract deployment data from a native GitHub webhook payload.
+     * Extract deployment data from a native GitHub (or Gitea) webhook payload.
      *
      * @return array<string, mixed>|null null when the event only needs an ack
      */
@@ -67,11 +92,34 @@ class ApiDeploymentController extends Controller
         abort_unless($project->matchesRepository($repository), 422, 'Repository does not match this project.');
 
         return $this->deploymentData($project, $event, $ref, $repository,
-            $request->input('head_commit.id') ?? $request->input('after'));
+            $request->input('head_commit.id') ?? $request->input('after'),
+            $request->input('repository.default_branch'));
     }
 
     /**
-     * Extract deployment data from a generic (non-GitHub) trigger.
+     * Extract deployment data from a GitLab webhook payload.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fromGitLab(Request $request, Project $project): ?array
+    {
+        $gitlabEvent = $request->header('X-Gitlab-Event');
+
+        abort_unless($gitlabEvent === 'Push Hook', 422, "Unsupported event [$gitlabEvent].");
+
+        $ref = $request->input('ref');
+        $repository = $request->input('project.path_with_namespace');
+        abort_if(! $ref || ! $repository, 422, 'Payload is missing ref or repository.');
+
+        abort_unless($project->matchesRepository($repository), 422, 'Repository does not match this project.');
+
+        return $this->deploymentData($project, Event::PUSH, $ref, $repository,
+            $request->input('checkout_sha') ?? $request->input('after'),
+            $request->input('project.default_branch'));
+    }
+
+    /**
+     * Extract deployment data from a generic (non-forge) trigger.
      *
      * @return array<string, mixed>
      */
@@ -88,7 +136,8 @@ class ApiDeploymentController extends Controller
 
         abort_unless($project->matchesRepository($validated['repo']), 422, 'Repository does not match this project.');
 
-        return $this->deploymentData($project, $event, $validated['ref'], $validated['repo'], $request->input('sha'));
+        return $this->deploymentData($project, $event, $validated['ref'], $validated['repo'],
+            $request->input('sha'), $request->input('default_branch'));
     }
 
     /**
@@ -98,16 +147,18 @@ class ApiDeploymentController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function deploymentData(Project $project, int $event, string $ref, string $repository, ?string $commitSha): array
+    private function deploymentData(Project $project, int $event, string $ref, string $repository, ?string $commitSha, ?string $defaultBranch = null): array
     {
         abort_unless(preg_match('#^[\w.-]+/[\w.-]+$#', $repository), 422, 'Invalid repository name.');
         abort_unless(preg_match('#^[\w./-]+$#', $ref), 422, 'Invalid ref.');
         abort_if($commitSha !== null && ! preg_match('/^[0-9a-f]{6,64}$/i', $commitSha), 422, 'Invalid commit SHA.');
+        abort_if($defaultBranch !== null && ! preg_match('#^[\w./-]+$#', $defaultBranch), 422, 'Invalid default branch.');
 
         return [
             'project_id' => $project->id,
             'event' => $event,
             'ref' => $ref,
+            'default_branch' => $defaultBranch,
             'repository' => $repository,
             'commit_sha' => $commitSha,
             'received_at' => Carbon::now(),

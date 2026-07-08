@@ -15,6 +15,7 @@ const props = defineProps({
 
 const form = useForm({
     event: props.events.length ? props.events[0].value : '',
+    branch: '',
     server: props.servers.length ? props.servers[0].ulid : '',
     steps: [{ type: 'docker_deploy', config: {} }],
 });
@@ -46,6 +47,16 @@ const fieldClass = 'mt-1 block w-full border-gray-300 focus:border-indigo-500 fo
                                 </option>
                             </select>
                             <InputError :message="form.errors.event" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <InputLabel for="branch" value="Branch" />
+                            <input id="branch" v-model="form.branch" type="text" :class="fieldClass" placeholder="default branch" />
+                            <p class="mt-1 text-sm text-gray-500">
+                                Only pushes to this branch deploy. Empty = the repository's default branch; use
+                                <code class="rounded bg-gray-100 px-1">*</code> to deploy every branch.
+                            </p>
+                            <InputError :message="form.errors.branch" class="mt-2" />
                         </div>
 
                         <div>

@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ConfirmationModal from '@/Components/ConfirmationModal.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -41,6 +43,36 @@ const copyPublicKey = async () => {
     await navigator.clipboard.writeText(props.server.public_key);
     copied.value = true;
     setTimeout(() => (copied.value = false), 2000);
+};
+
+const settingsForm = useForm({
+    name: props.server.name,
+    user: props.server.user,
+    ip: props.server.ip ?? '',
+    port: props.server.port,
+});
+
+const saveSettings = () => {
+    settingsForm.put(route('server.update', props.server), { preserveScroll: true });
+};
+
+const rotateKeyForm = useForm({});
+const confirmingKeyRotation = ref(false);
+
+const rotateKey = () => {
+    rotateKeyForm.post(route('server.key.store', props.server), {
+        preserveScroll: true,
+        onSuccess: () => (confirmingKeyRotation.value = false),
+    });
+};
+
+const deleteServerForm = useForm({});
+const confirmingServerDeletion = ref(false);
+
+const deleteServer = () => {
+    deleteServerForm.delete(route('server.destroy', props.server), {
+        onFinish: () => (confirmingServerDeletion.value = false),
+    });
 };
 </script>
 
@@ -93,6 +125,55 @@ const copyPublicKey = async () => {
                     No SSH setup is needed.
                 </div>
 
+                <!-- Settings -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <details>
+                        <summary class="cursor-pointer px-6 py-4 font-medium text-gray-700">
+                            Settings
+                        </summary>
+                        <form class="space-y-4 px-6 pb-6" @submit.prevent="saveSettings">
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <InputLabel for="settings-name" value="Name" />
+                                    <TextInput id="settings-name" v-model="settingsForm.name" type="text" class="mt-1 block w-full" required />
+                                    <InputError :message="settingsForm.errors.name" class="mt-2" />
+                                </div>
+                                <template v-if="server.type === 'ssh'">
+                                    <div>
+                                        <InputLabel for="settings-user" value="User" />
+                                        <TextInput id="settings-user" v-model="settingsForm.user" type="text" class="mt-1 block w-full" required />
+                                        <InputError :message="settingsForm.errors.user" class="mt-2" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="settings-ip" value="IP" />
+                                        <TextInput id="settings-ip" v-model="settingsForm.ip" type="text" class="mt-1 block w-full" required />
+                                        <InputError :message="settingsForm.errors.ip" class="mt-2" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="settings-port" value="Port" />
+                                        <TextInput id="settings-port" v-model="settingsForm.port" type="number" class="mt-1 block w-full" required />
+                                        <InputError :message="settingsForm.errors.port" class="mt-2" />
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <DangerButton type="button" @click="confirmingServerDeletion = true">
+                                        Delete server
+                                    </DangerButton>
+                                    <SecondaryButton v-if="server.type === 'ssh'" type="button" @click="confirmingKeyRotation = true">
+                                        Rotate keypair
+                                    </SecondaryButton>
+                                </div>
+                                <PrimaryButton :class="{ 'opacity-25': settingsForm.processing }" :disabled="settingsForm.processing">
+                                    Save
+                                </PrimaryButton>
+                            </div>
+                            <InputError :message="deleteServerForm.errors.server" />
+                        </form>
+                    </details>
+                </div>
+
                 <div v-if="server.type === 'ssh' && server.public_key" class="bg-white shadow sm:rounded-lg p-6">
                     <h3 class="font-medium text-gray-700">Public key</h3>
                     <p class="mt-1 text-sm text-gray-500">
@@ -138,5 +219,54 @@ const copyPublicKey = async () => {
                 </div>
             </div>
         </div>
+
+        <!-- Delete server confirmation -->
+        <ConfirmationModal :show="confirmingServerDeletion" @close="confirmingServerDeletion = false">
+            <template #title>
+                Delete server
+            </template>
+            <template #content>
+                Delete "{{ server.name }}"? Servers still referenced by workflows cannot be
+                deleted — repoint those workflows first.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="confirmingServerDeletion = false">
+                    Cancel
+                </SecondaryButton>
+                <DangerButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': deleteServerForm.processing }"
+                    :disabled="deleteServerForm.processing"
+                    @click="deleteServer"
+                >
+                    Delete server
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <!-- Rotate keypair confirmation -->
+        <ConfirmationModal :show="confirmingKeyRotation" @close="confirmingKeyRotation = false">
+            <template #title>
+                Rotate keypair
+            </template>
+            <template #content>
+                Generates a new keypair for this server. The current key stops being used
+                immediately — deployments will fail until the new public key is installed
+                in the server's authorized keys.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="confirmingKeyRotation = false">
+                    Cancel
+                </SecondaryButton>
+                <DangerButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': rotateKeyForm.processing }"
+                    :disabled="rotateKeyForm.processing"
+                    @click="rotateKey"
+                >
+                    Rotate
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
     </AppLayout>
 </template>

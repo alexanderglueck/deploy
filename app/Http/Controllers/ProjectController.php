@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ReconcileImageAvailability;
+use App\Models\Deployment;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,8 +29,19 @@ class ProjectController extends Controller
             // The secret is hidden from serialization; the setup card needs it.
             'webhookSecret' => $project->webhook_secret,
             'workflows' => $project->workflows()->with(['server', 'steps'])->get(),
-            // Bounded so the 3s polling payload stays small.
-            'deployments' => $project->deployments()->with(['log', 'steps'])->limit(25)->get(),
+            // Bounded so the 3s polling payload stays small. Output is only
+            // shipped inline for active deployments (their logs are live);
+            // finished ones load it on demand via deployment.output.
+            'deployments' => $project->deployments()
+                ->with(['log', 'steps', 'triggeredBy'])
+                ->limit(25)
+                ->get()
+                ->each(function (Deployment $deployment) {
+                    if (! $deployment->isActive()) {
+                        $deployment->steps->each->makeHidden('output');
+                        $deployment->unsetRelation('log');
+                    }
+                }),
         ]);
     }
 
@@ -56,6 +68,16 @@ class ProjectController extends Controller
         $project->update($this->validateProject($request));
 
         return redirect()->route('project.show', $project);
+    }
+
+    public function destroy(Request $request, Project $project): RedirectResponse
+    {
+        $this->ensureOwnedByCurrentTeam($request, $project->team_id);
+
+        // Workflows, deployments, steps and logs cascade away with it.
+        $project->delete();
+
+        return redirect()->route('dashboard')->banner('Project deleted.');
     }
 
     /**

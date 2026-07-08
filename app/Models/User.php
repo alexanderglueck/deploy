@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUlid;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -13,7 +12,9 @@ use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail
+// Deliberately NOT MustVerifyEmail: self-hosted installs often have no mail
+// transport, and requiring verification would lock the first user out.
+class User extends Authenticatable
 {
     use HasApiTokens;
 

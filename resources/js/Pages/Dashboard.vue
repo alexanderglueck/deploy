@@ -68,9 +68,17 @@ watch(hasCurrent, (active) => {
                     </div>
                     <ul class="divide-y divide-gray-100">
                         <li v-for="deployment in recentDeployments" :key="deployment.ulid">
-                            <Link :href="route('project.show', deployment.project)" class="block px-4 py-3 hover:bg-gray-50">
-                                <span class="font-medium text-gray-800">{{ deployment.project.name }}</span>
-                                <span class="text-gray-400 text-sm"> ({{ deployUrl(deployment.project.deploy_endpoint) }})</span>
+                            <Link :href="route('project.show', deployment.project)" class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
+                                <span>
+                                    <span class="font-medium text-gray-800">{{ deployment.project.name }}</span>
+                                    <span class="text-gray-400 text-sm"> {{ deployment.ref }}</span>
+                                </span>
+                                <span
+                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                    :class="deployment.status === 'deployed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                >
+                                    {{ deployment.status === 'deployed' ? 'Deployed' : 'Failed' }}
+                                </span>
                             </Link>
                         </li>
                         <li v-if="!recentDeployments.length" class="px-4 py-3 text-sm text-gray-400">

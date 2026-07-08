@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { Link, useForm, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
@@ -47,6 +47,45 @@ const workflowPendingDeletion = ref(null);
 const deploymentPendingCancellation = ref(null);
 const deploymentPendingRollback = ref(null);
 const rollbackForm = useForm({});
+const retryForm = useForm({});
+const deleteProjectForm = useForm({});
+const rotateSecretForm = useForm({});
+const confirmingProjectDeletion = ref(false);
+const confirmingSecretRotation = ref(false);
+
+// Finished deployments ship without output; it is fetched once when their
+// details are first expanded. Keyed by deployment ulid.
+const outputs = reactive({});
+
+const loadOutput = async (deployment) => {
+    if (isActive(deployment) || outputs[deployment.ulid]) return;
+    outputs[deployment.ulid] = { steps: {}, log: null };
+    const response = await fetch(route('deployment.output', [props.project, deployment]), {
+        headers: { Accept: 'application/json' },
+    });
+    if (response.ok) outputs[deployment.ulid] = await response.json();
+};
+
+const stepOutput = (deployment, step) =>
+    step.output !== undefined ? step.output : outputs[deployment.ulid]?.steps?.[step.ulid];
+
+const deploymentLog = (deployment) =>
+    deployment.log !== undefined ? deployment.log?.log : outputs[deployment.ulid]?.log;
+
+const retry = (deployment) => {
+    retryForm.post(route('deployment.retry', [props.project, deployment]), { preserveScroll: true });
+};
+
+const deleteProject = () => {
+    deleteProjectForm.delete(route('project.destroy', props.project));
+};
+
+const rotateSecret = () => {
+    rotateSecretForm.post(route('project.webhook-secret.store', props.project), {
+        preserveScroll: true,
+        onSuccess: () => (confirmingSecretRotation.value = false),
+    });
+};
 
 const deploy = () => {
     deployForm.post(route('deployment.store', props.project), { preserveScroll: true });
@@ -257,7 +296,10 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                     <InputError :message="settingsForm.errors.default_branch" class="mt-2" />
                                 </div>
                             </div>
-                            <div class="flex justify-end">
+                            <div class="flex items-center justify-between">
+                                <DangerButton type="button" @click="confirmingProjectDeletion = true">
+                                    Delete project
+                                </DangerButton>
                                 <PrimaryButton :class="{ 'opacity-25': settingsForm.processing }" :disabled="settingsForm.processing">
                                     Save
                                 </PrimaryButton>
@@ -292,6 +334,9 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 </button>
                                 <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="copyToClipboard('secret', webhookSecret)">
                                     {{ copiedField === 'secret' ? 'Copied!' : 'Copy' }}
+                                </button>
+                                <button type="button" class="text-xs font-medium text-red-600 hover:underline" @click="confirmingSecretRotation = true">
+                                    Rotate
                                 </button>
                             </div>
                         </div>
@@ -347,6 +392,15 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         Rollback
                                     </span>
                                     <span
+                                        v-if="deployment.is_retry"
+                                        class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+                                    >
+                                        Retry
+                                    </span>
+                                    <span v-if="deployment.triggered_by_name" class="text-xs text-gray-400">
+                                        by {{ deployment.triggered_by_name }}
+                                    </span>
+                                    <span
                                         v-if="deployment.status === 'deployed' && deployment.image"
                                         class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                                         :class="isInstantRollback(deployment) ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'"
@@ -357,6 +411,15 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs text-gray-400">{{ fmt(deployment.received_at) }}</span>
+                                    <button
+                                        v-if="deployment.status === 'failed'"
+                                        type="button"
+                                        class="text-xs font-medium text-indigo-600 hover:text-indigo-500 hover:underline"
+                                        :disabled="retryForm.processing"
+                                        @click="retry(deployment)"
+                                    >
+                                        Retry
+                                    </button>
                                     <button
                                         v-if="canRollBackTo(deployment)"
                                         type="button"
@@ -393,7 +456,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                     :key="step.ulid"
                                     class="rounded-lg border border-gray-100"
                                 >
-                                    <details :open="step.status === 'running' || step.status === 'failed'">
+                                    <details :open="step.status === 'running'" @toggle="loadOutput(deployment)">
                                         <summary class="flex cursor-pointer items-center justify-between px-3 py-2">
                                             <span class="flex items-center gap-2 text-sm text-gray-700">
                                                 <span
@@ -412,7 +475,7 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         </summary>
                                         <div class="border-t border-gray-100 p-2">
                                             <LogOutput
-                                                :content="step.output"
+                                                :content="stepOutput(deployment, step)"
                                                 placeholder="No output."
                                                 max-height="max-h-72"
                                                 :auto-scroll="step.status === 'running'"
@@ -420,9 +483,9 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         </div>
                                     </details>
                                 </div>
-                                <details v-if="deployment.log?.log" class="mt-2">
+                                <details v-if="deployment.status === 'failed' || deployment.log?.log" class="mt-2" @toggle="loadOutput(deployment)">
                                     <summary class="cursor-pointer text-sm text-gray-600">System log</summary>
-                                    <LogOutput class="mt-2" :content="deployment.log.log" />
+                                    <LogOutput class="mt-2" :content="deploymentLog(deployment)" />
                                 </details>
                             </div>
 
@@ -441,9 +504,9 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                     <summary class="cursor-pointer text-sm text-gray-600">Executed actions</summary>
                                     <pre class="mt-2 text-gray-100 bg-gray-900 rounded p-3 overflow-x-auto text-sm"><samp>{{ deployment.actions }}</samp></pre>
                                 </details>
-                                <details class="mt-2">
+                                <details class="mt-2" @toggle="loadOutput(deployment)">
                                     <summary class="cursor-pointer text-sm text-gray-600">Log</summary>
-                                    <LogOutput class="mt-2" :content="deployment.log?.log" />
+                                    <LogOutput class="mt-2" :content="deploymentLog(deployment)" />
                                 </details>
                             </template>
                         </li>
@@ -472,6 +535,55 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                     @click="deleteWorkflow"
                 >
                     Delete
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <!-- Delete project confirmation -->
+        <ConfirmationModal :show="confirmingProjectDeletion" @close="confirmingProjectDeletion = false">
+            <template #title>
+                Delete project
+            </template>
+            <template #content>
+                Delete "{{ project.name }}" including all its workflows and deployment history?
+                This cannot be undone. Deployed containers keep running; only this project's
+                records are removed.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="confirmingProjectDeletion = false">
+                    Cancel
+                </SecondaryButton>
+                <DangerButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': deleteProjectForm.processing }"
+                    :disabled="deleteProjectForm.processing"
+                    @click="deleteProject"
+                >
+                    Delete project
+                </DangerButton>
+            </template>
+        </ConfirmationModal>
+
+        <!-- Rotate secret confirmation -->
+        <ConfirmationModal :show="confirmingSecretRotation" @close="confirmingSecretRotation = false">
+            <template #title>
+                Rotate webhook secret
+            </template>
+            <template #content>
+                Generates a new secret immediately. Every webhook configured with the old
+                secret will be rejected until you update it.
+            </template>
+            <template #footer>
+                <SecondaryButton @click="confirmingSecretRotation = false">
+                    Cancel
+                </SecondaryButton>
+                <DangerButton
+                    class="ms-3"
+                    :class="{ 'opacity-25': rotateSecretForm.processing }"
+                    :disabled="rotateSecretForm.processing"
+                    @click="rotateSecret"
+                >
+                    Rotate
                 </DangerButton>
             </template>
         </ConfirmationModal>

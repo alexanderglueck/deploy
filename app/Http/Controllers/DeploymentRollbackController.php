@@ -35,9 +35,11 @@ class DeploymentRollbackController extends Controller
             'project_id' => $project->id,
             'event' => $deployment->event,
             'ref' => $deployment->ref,
+            'default_branch' => $deployment->default_branch,
             'repository' => $deployment->repository,
             'commit_sha' => $deployment->commit_sha,
             'rollback_of_id' => $deployment->id,
+            'triggered_by' => $request->user()->id,
             'received_at' => Carbon::now(),
         ]);
 

@@ -167,7 +167,8 @@ return [
         // entirely (so they 404) and the "Register" link disappears from the UI.
         env('REGISTRATION_ENABLED', true) ? Features::registration() : null,
         Features::resetPasswords(),
-        Features::emailVerification(),
+        // Disabled: self-hosted installs often have no mail transport.
+        // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
         Features::twoFactorAuthentication([

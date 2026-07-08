@@ -1,13 +1,17 @@
 <?php
 
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\DeploymentOutputController;
+use App\Http\Controllers\DeploymentRetryController;
 use App\Http\Controllers\DeploymentRollbackController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LegacyLogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectWebhookSecretController;
 use App\Http\Controllers\ServerConnectionTestController;
 use App\Http\Controllers\ServerController;
+use App\Http\Controllers\ServerKeyController;
 use App\Http\Controllers\ServerSetupController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\WorkflowController;
@@ -31,13 +35,18 @@ Route::middleware([
     Route::get('/servers/create', [ServerController::class, 'create'])->name('server.create');
     Route::post('/servers', [ServerController::class, 'store'])->name('server.store');
     Route::get('/servers/{server}', [ServerController::class, 'show'])->name('server.show');
+    Route::put('/servers/{server}', [ServerController::class, 'update'])->name('server.update');
+    Route::delete('/servers/{server}', [ServerController::class, 'destroy'])->name('server.destroy');
     Route::post('/servers/{server}/setup', [ServerSetupController::class, 'store'])->name('server.setup.store');
     Route::post('/servers/{server}/test-connection', [ServerConnectionTestController::class, 'store'])->name('server.test.store');
+    Route::post('/servers/{server}/regenerate-key', [ServerKeyController::class, 'store'])->name('server.key.store');
 
     Route::get('/projects/create', [ProjectController::class, 'create'])->name('project.create');
     Route::post('/projects', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('project.show');
     Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('project.update');
+    Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::post('/projects/{project}/webhook-secret', [ProjectWebhookSecretController::class, 'store'])->name('project.webhook-secret.store');
 
     // scopeBindings() forces the nested {workflow}/{deployment} to belong to {project}.
     Route::scopeBindings()->group(function () {
@@ -48,8 +57,10 @@ Route::middleware([
         Route::get('/projects/{project}/workflows/{workflow}/edit', [WorkflowController::class, 'edit'])->name('workflow.edit');
         Route::put('/projects/{project}/workflows/{workflow}', [WorkflowController::class, 'update'])->name('workflow.update');
 
+        Route::get('/projects/{project}/deployments/{deployment}/output', [DeploymentOutputController::class, 'show'])->name('deployment.output');
         Route::post('/projects/{project}/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployment.cancel');
         Route::post('/projects/{project}/deployments/{deployment}/rollback', [DeploymentRollbackController::class, 'store'])->name('deployment.rollback');
+        Route::post('/projects/{project}/deployments/{deployment}/retry', [DeploymentRetryController::class, 'store'])->name('deployment.retry');
     });
 
     Route::post('/deploy/{project:deploy_endpoint}', [DeploymentController::class, 'store'])->name('deployment.store');

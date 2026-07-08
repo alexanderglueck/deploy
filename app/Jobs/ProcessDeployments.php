@@ -20,6 +20,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class ProcessDeployments implements ShouldQueue
@@ -126,10 +127,13 @@ class ProcessDeployments implements ShouldQueue
         $project = $this->deployment->project;
 
         /** @var Workflow|null $workflow */
-        $workflow = $project->workflows()->where('event', $this->deployment->event)->first();
+        $workflow = $project->workflows()
+            ->where('event', $this->deployment->event)
+            ->get()
+            ->first(fn (Workflow $candidate) => $candidate->matchesBranch($this->deployment));
 
         if (! $workflow) {
-            $this->markFailed('ERROR: No workflow is configured for this event.');
+            $this->markFailed("ERROR: No workflow matches this event and branch ({$this->deployment->ref}).");
 
             return;
         }
@@ -258,5 +262,31 @@ class ProcessDeployments implements ShouldQueue
         $this->deployment->update([
             'failed_at' => Carbon::now(),
         ]);
+
+        $this->notifyFailure($message);
+    }
+
+    /**
+     * POST a failure to the configured notification URL (ntfy, Slack,
+     * healthchecks, ...). Best effort — a broken notifier never breaks
+     * deployments.
+     */
+    private function notifyFailure(string $message): void
+    {
+        $url = config('deploy.notify_url');
+
+        if (! $url) {
+            return;
+        }
+
+        rescue(fn () => Http::timeout(5)->post($url, [
+            'status' => 'failed',
+            'project' => $this->deployment->project->name,
+            'repository' => $this->deployment->repository,
+            'ref' => $this->deployment->ref,
+            'commit_sha' => $this->deployment->commit_sha,
+            'message' => trim($message),
+            'url' => route('project.show', $this->deployment->project),
+        ]), report: false);
     }
 }

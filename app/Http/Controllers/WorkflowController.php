@@ -52,6 +52,7 @@ class WorkflowController extends Controller
         DB::transaction(function () use ($project, $server, $validated) {
             $workflow = $project->workflows()->create([
                 'event' => $validated['event'],
+                'branch' => $validated['branch'] ?? null,
                 'server_id' => $server->id,
             ]);
 
@@ -96,6 +97,7 @@ class WorkflowController extends Controller
         DB::transaction(function () use ($workflow, $server, $validated) {
             $workflow->update([
                 'event' => $validated['event'],
+                'branch' => $validated['branch'] ?? null,
                 'server_id' => $server->id,
                 // Steps are the source of truth now.
                 'actions' => null,
@@ -115,6 +117,7 @@ class WorkflowController extends Controller
     {
         return $request->validate([
             'event' => 'required',
+            'branch' => ['nullable', 'string', 'regex:#^(\*|[\w./-]+)$#'],
             'server' => 'required',
             'steps' => 'required|array|min:1',
             'steps.*.type' => ['required', Rule::in(StepType::all())],

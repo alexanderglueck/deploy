@@ -178,7 +178,7 @@ class ProcessDeploymentsTest extends TestCase
 
         $deployment->refresh();
         $this->assertSame('failed', $deployment->status);
-        $this->assertStringContainsString('No workflow is configured', $deployment->log->log);
+        $this->assertStringContainsString('No workflow matches', $deployment->log->log);
         $this->assertSame([], $executor->scripts);
     }
 

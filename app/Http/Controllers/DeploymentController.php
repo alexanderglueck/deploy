@@ -27,6 +27,7 @@ class DeploymentController extends Controller
             // Docker deploy steps clone this; the fallback keeps legacy
             // projects without a repository working for script workflows.
             'repository' => $project->repository ?? 'manual_deploy',
+            'triggered_by' => $request->user()->id,
             'received_at' => Carbon::now(),
         ];
 

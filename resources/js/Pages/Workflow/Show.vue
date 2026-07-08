@@ -39,6 +39,13 @@ const typeLabel = (type) => props.stepTypes?.find((t) => t.value === type)?.labe
                             </span>
                         </dd>
 
+                        <dt class="font-medium text-gray-500">Branch</dt>
+                        <dd class="col-span-2 text-gray-800">
+                            <template v-if="workflow.branch === '*'">Any branch</template>
+                            <template v-else-if="workflow.branch">{{ workflow.branch }}</template>
+                            <span v-else class="text-gray-500">Default branch</span>
+                        </dd>
+
                         <dt class="font-medium text-gray-500">Server</dt>
                         <dd class="col-span-2 text-gray-800">
                             <Link

@@ -64,4 +64,38 @@ class ServerController extends Controller
 
         return redirect()->route('server.show', $server);
     }
+
+    public function update(Request $request, Server $server): RedirectResponse
+    {
+        $this->ensureOwnedByCurrentTeam($request, $server->team_id);
+
+        $validated = $request->validate($server->isLocal() ? [
+            'name' => 'required',
+        ] : [
+            'name' => 'required',
+            'user' => 'required',
+            'ip' => 'required|ipv4',
+            'port' => 'required|integer',
+        ]);
+
+        $server->update($validated);
+
+        return redirect()->route('server.show', $server)->banner('Server updated.');
+    }
+
+    public function destroy(Request $request, Server $server): RedirectResponse
+    {
+        $this->ensureOwnedByCurrentTeam($request, $server->team_id);
+
+        // Deleting would cascade the workflows away silently; make the user
+        // untangle them first.
+        if ($server->workflows()->exists()) {
+            return redirect()->route('server.show', $server)
+                ->withErrors(['server' => 'This server is still used by workflows. Delete or repoint them first.']);
+        }
+
+        $server->delete();
+
+        return redirect()->route('server.index')->banner('Server deleted.');
+    }
 }

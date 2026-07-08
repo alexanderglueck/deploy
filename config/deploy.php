@@ -46,6 +46,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Failure notifications
+    |--------------------------------------------------------------------------
+    |
+    | When set, a JSON POST is sent to this URL every time a deployment
+    | fails. Works with ntfy, Slack/Discord webhooks, healthchecks.io, or
+    | anything else that accepts a POST. Leave empty to disable.
+    |
+    */
+
+    'notify_url' => env('DEPLOY_NOTIFY_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Retention
+    |--------------------------------------------------------------------------
+    |
+    | Concluded deployments (and their step logs) older than this many days
+    | are pruned. Pruning runs opportunistically after webhook deployments
+    | (at most once a day) and via `php artisan deploy:prune`.
+    |
+    */
+
+    'retention_days' => (int) env('DEPLOY_RETENTION_DAYS', 100),
+
+    /*
+    |--------------------------------------------------------------------------
     | Legacy deploy logs
     |--------------------------------------------------------------------------
     |

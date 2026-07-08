@@ -133,16 +133,37 @@ class Server extends Model
         return $this->hasMany(Workflow::class);
     }
 
+    /**
+     * Set a fresh Ed25519 keypair on the model (not persisted).
+     */
+    public function generateKeypair(): void
+    {
+        $key = EC::createKey('Ed25519');
+
+        $this->private_key = $key->toString('OpenSSH');
+        $this->public_key = $key->getPublicKey()->toString('OpenSSH', ['comment' => 'deploy']);
+    }
+
+    /**
+     * Replace this server's keypair. The old key stops working immediately,
+     * so the server needs to be set up again.
+     */
+    public function rotateKeypair(): void
+    {
+        $this->generateKeypair();
+
+        $this->setup_at = null;
+
+        $this->save();
+    }
+
     protected static function booted()
     {
         // Every SSH server gets its own keypair, so revoking one server never
         // affects another and no key is ever shared between installations.
         static::creating(function (Server $server) {
             if ($server->type === self::TYPE_SSH && ! $server->private_key) {
-                $key = EC::createKey('Ed25519');
-
-                $server->private_key = $key->toString('OpenSSH');
-                $server->public_key = $key->getPublicKey()->toString('OpenSSH', ['comment' => 'deploy']);
+                $server->generateKeypair();
             }
         });
     }
