@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
@@ -17,8 +17,11 @@ const props = defineProps({
 const actionForm = useForm({ action: null });
 const pendingAction = ref(null);
 
+const IMMEDIATE = ['start', 'unpause'];
+const ACTION_WORD = { stop: 'Stop', restart: 'Restart', kill: 'Kill' };
+
 const runAction = (action) => {
-    if (action === 'start') {
+    if (IMMEDIATE.includes(action)) {
         submitAction(action);
     } else {
         pendingAction.value = action;
@@ -34,18 +37,61 @@ const submitAction = (action) => {
 };
 
 const isRunning = () => props.container?.state === 'running' || props.container?.state === 'restarting';
+const isPaused = () => props.container?.state === 'paused';
+
+// Keep the inspect fields (state, exit code, restarts) live alongside the
+// log polling below.
+usePoll(5000, { only: ['container', 'error'] });
 
 // Logs are fetched on demand and polled while this page is open (true
 // streaming is deferred — FrankenPHP classic mode).
 const logs = ref('');
+const logError = ref(null);
 const tail = ref(500);
+const since = ref('');
+const timestamps = ref(true);
 let timer = null;
 
+const logParams = () => {
+    const params = new URLSearchParams({ tail: tail.value, timestamps: timestamps.value ? 1 : 0 });
+    if (since.value) params.set('since', since.value);
+
+    return params;
+};
+
 const fetchLogs = async () => {
-    const response = await fetch(route('container.logs', [props.server, props.name]) + `?tail=${tail.value}`, {
+    try {
+        const response = await fetch(route('container.logs', [props.server, props.name]) + `?${logParams()}`, {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        logs.value = data.logs;
+        logError.value = data.error;
+    } catch {
+        // Transient fetch/parse failures (network blip, expired session
+        // redirect) — the next poll or Inertia visit sorts it out.
+    }
+};
+
+// Full current window (capped at the backend's 5000-line tail) as a file.
+const downloadLogs = async () => {
+    const params = logParams();
+    params.set('tail', 5000);
+
+    const response = await fetch(route('container.logs', [props.server, props.name]) + `?${params}`, {
         headers: { Accept: 'application/json' },
     });
-    if (response.ok) logs.value = (await response.json()).logs;
+    if (!response.ok) return;
+
+    const data = await response.json();
+    const url = URL.createObjectURL(new Blob([data.logs], { type: 'text/plain' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${props.name}.log`;
+    link.click();
+    URL.revokeObjectURL(url);
 };
 
 onMounted(() => {
@@ -68,9 +114,11 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
                     Docker — {{ name }}
                 </h2>
                 <div v-if="container" class="flex items-center gap-2 text-xs font-medium">
-                    <button v-if="!isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-green-700 hover:bg-gray-50" @click="runAction('start')">Start</button>
+                    <button v-if="isPaused()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-green-700 hover:bg-gray-50" @click="runAction('unpause')">Unpause</button>
+                    <button v-else-if="!isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-green-700 hover:bg-gray-50" @click="runAction('start')">Start</button>
                     <button v-if="isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-indigo-700 hover:bg-gray-50" @click="runAction('restart')">Restart</button>
                     <button v-if="isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-red-700 hover:bg-gray-50" @click="runAction('stop')">Stop</button>
+                    <button v-if="isRunning() || isPaused()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-red-700 hover:bg-gray-50" @click="runAction('kill')">Kill</button>
                 </div>
             </div>
         </template>
@@ -87,7 +135,10 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
                     <div class="bg-white shadow sm:rounded-lg p-6">
                         <dl class="grid grid-cols-3 gap-y-2 text-sm">
                             <dt class="font-medium text-gray-500">State</dt>
-                            <dd class="col-span-2 text-gray-800">{{ container.state }}<span v-if="!container.running && container.exit_code !== null"> (exit {{ container.exit_code }})</span></dd>
+                            <dd class="col-span-2 text-gray-800">
+                                {{ container.state }}<span v-if="!container.running && container.exit_code !== null"> (exit {{ container.exit_code }})</span>
+                                <span v-if="container.health" :class="container.health === 'unhealthy' ? 'text-red-600' : 'text-gray-500'"> — {{ container.health }}</span>
+                            </dd>
                             <dt class="font-medium text-gray-500">Image</dt>
                             <dd class="col-span-2 text-gray-800">{{ container.image }}</dd>
                             <template v-if="container.error">
@@ -108,15 +159,34 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
                     </div>
 
                     <div class="bg-white shadow sm:rounded-lg">
-                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-gray-200">
                             <span class="font-medium text-gray-700">Logs</span>
-                            <select v-model.number="tail" class="border-gray-300 rounded-md text-xs shadow-sm" @change="fetchLogs">
-                                <option :value="200">Last 200 lines</option>
-                                <option :value="500">Last 500 lines</option>
-                                <option :value="2000">Last 2000 lines</option>
-                            </select>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <select v-model="since" class="border-gray-300 rounded-md text-xs shadow-sm" @change="fetchLogs">
+                                    <option value="">All time</option>
+                                    <option value="15m">Last 15 minutes</option>
+                                    <option value="1h">Last hour</option>
+                                    <option value="6h">Last 6 hours</option>
+                                    <option value="24h">Last 24 hours</option>
+                                </select>
+                                <select v-model.number="tail" class="border-gray-300 rounded-md text-xs shadow-sm" @change="fetchLogs">
+                                    <option :value="200">Last 200 lines</option>
+                                    <option :value="500">Last 500 lines</option>
+                                    <option :value="2000">Last 2000 lines</option>
+                                </select>
+                                <label class="flex items-center gap-1.5 text-xs text-gray-500">
+                                    <input v-model="timestamps" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" @change="fetchLogs">
+                                    Timestamps
+                                </label>
+                                <button type="button" class="text-xs font-medium text-indigo-600 hover:underline" @click="downloadLogs">
+                                    Download
+                                </button>
+                            </div>
                         </div>
                         <div class="p-4">
+                            <div v-if="logError" class="mb-2 rounded bg-red-50 px-3 py-2 text-xs text-red-700">
+                                {{ logError }}
+                            </div>
                             <LogOutput :content="logs" placeholder="No output." max-height="max-h-[32rem]" auto-scroll />
                         </div>
                     </div>
@@ -130,12 +200,17 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
 
         <ConfirmationModal :show="pendingAction !== null" @close="pendingAction = null">
             <template #title>
-                {{ pendingAction === 'stop' ? 'Stop' : 'Restart' }} container
+                {{ ACTION_WORD[pendingAction] }} container
             </template>
             <template #content>
-                {{ pendingAction === 'stop' ? 'Stop' : 'Restart' }}
+                {{ ACTION_WORD[pendingAction] }}
                 <code class="rounded bg-gray-100 px-1 text-sm">{{ name }}</code>?
-                This interrupts the running service.
+                <template v-if="pendingAction === 'kill'">
+                    This sends SIGKILL immediately — no graceful shutdown.
+                </template>
+                <template v-else>
+                    This interrupts the running service.
+                </template>
             </template>
             <template #footer>
                 <SecondaryButton @click="pendingAction = null">Cancel</SecondaryButton>
@@ -145,7 +220,7 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
                     :disabled="actionForm.processing"
                     @click="submitAction(pendingAction)"
                 >
-                    {{ pendingAction === 'stop' ? 'Stop' : 'Restart' }}
+                    {{ ACTION_WORD[pendingAction] }}
                 </DangerButton>
             </template>
         </ConfirmationModal>

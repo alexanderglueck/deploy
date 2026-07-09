@@ -32,9 +32,12 @@ record of every deployment.
   **retry** (pinned to the failed run's commit), and **rollback** (instant
   image retag while the SHA image survives pruning, rebuild-from-commit after);
   a copyable GitHub Actions trigger snippet per project.
-- **Docker dashboard** — per-server view of containers (state, why/when they
-  exited, ports) and images, with start/stop/restart and log tailing. Works on
-  the local host and remote SSH servers through the same mechanism.
+- **Docker dashboard** — per-server view of containers (grouped by compose
+  stack, with state, health, why/when they exited, ports) and images, plus
+  on-demand CPU/memory stats and daemon disk usage. Start/stop/restart/
+  unpause/kill with a per-server audit trail of who ran what, and log tailing
+  with time-window, tail-length and timestamp filters. Works on the local host
+  and remote SSH servers through the same mechanism.
 - **Queue-based** — deployments run on a worker with a per-project lock;
   superseded pending deployments are auto-canceled.
 - **Housekeeping** — optional failure notifications (`DEPLOY_NOTIFY_URL` gets a
@@ -120,6 +123,11 @@ docker compose up -d        # nginx + php-fpm (dev target) + worker + mariadb
 npm run dev
 vendor/bin/phpunit
 ```
+
+The dev containers ship no docker CLI and don't mount the docker socket, so a
+"This server" (local) entry can't power the Docker dashboard or deploys in
+development — register the docker host (or any other box) as an SSH server
+instead. The production image has the CLI baked in.
 
 ## How a Docker deploy step finds things
 

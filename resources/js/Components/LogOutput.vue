@@ -27,8 +27,20 @@ const html = computed(() => {
     return ansi.ansi_to_html(text);
 });
 
+// Stick to the bottom only while the user is already there — scrolling up
+// to read older lines must survive the next poll's content update.
+const atBottom = ref(true);
+
+const onScroll = () => {
+    const el = box.value;
+
+    if (el) {
+        atBottom.value = el.scrollTop + el.clientHeight >= el.scrollHeight - 16;
+    }
+};
+
 watch(() => props.content, async () => {
-    if (! props.autoScroll) {
+    if (! props.autoScroll || ! atBottom.value) {
         return;
     }
 
@@ -45,5 +57,6 @@ watch(() => props.content, async () => {
         ref="box"
         class="text-gray-100 bg-gray-900 rounded p-3 overflow-auto text-sm whitespace-pre-wrap"
         :class="maxHeight"
+        @scroll="onScroll"
     ><span v-if="html" v-html="html" /><span v-else class="text-gray-500">{{ placeholder }}</span></pre>
 </template>

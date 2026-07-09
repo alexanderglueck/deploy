@@ -48,6 +48,48 @@ class DockerClientTest extends TestCase
     }
 
     #[Test]
+    public function it_parses_health_and_compose_labels()
+    {
+        $output = json_encode([
+            'ID' => 'abc',
+            'Names' => 'contacts-app',
+            'Image' => 'contacts:latest',
+            'State' => 'running',
+            'Status' => 'Up 3 hours (healthy)',
+            'Labels' => 'com.docker.compose.project=contacts,com.docker.compose.service=app,other=x',
+        ]);
+
+        $containers = (new DockerClient($this->executor($output)))->containers();
+
+        $this->assertSame('healthy', $containers[0]['health']);
+        $this->assertSame('contacts', $containers[0]['compose_project']);
+        $this->assertSame('app', $containers[0]['compose_service']);
+    }
+
+    #[Test]
+    public function containers_without_healthcheck_or_labels_report_null()
+    {
+        $output = json_encode(['ID' => 'abc', 'Names' => 'web', 'State' => 'running', 'Status' => 'Up 3 hours', 'Labels' => 'maintainer=nginx']);
+
+        $containers = (new DockerClient($this->executor($output)))->containers();
+
+        $this->assertNull($containers[0]['health']);
+        $this->assertNull($containers[0]['compose_project']);
+    }
+
+    #[Test]
+    public function garbage_only_output_raises_instead_of_reading_as_an_empty_list()
+    {
+        // An SSH server that doesn't report exit codes can hand back a daemon
+        // error with exit 0 — that must not render as "no containers".
+        $client = new DockerClient($this->executor('ERROR: Cannot connect to the Docker daemon', 0));
+
+        $this->expectException(DockerException::class);
+
+        $client->containers();
+    }
+
+    #[Test]
     public function it_parses_images()
     {
         $output = json_encode(['ID' => 'sha256:abc', 'Repository' => 'nginx', 'Tag' => 'latest', 'Size' => '187MB', 'CreatedSince' => '3 days ago']);
@@ -57,6 +99,32 @@ class DockerClientTest extends TestCase
         $this->assertSame('nginx', $images[0]['repository']);
         $this->assertSame('latest', $images[0]['tag']);
         $this->assertSame('187MB', $images[0]['size']);
+    }
+
+    #[Test]
+    public function it_parses_stats_keyed_by_container_name()
+    {
+        $output = json_encode(['Name' => 'web', 'CPUPerc' => '0.50%', 'MemUsage' => '120MiB / 1GiB', 'MemPerc' => '12.00%']);
+
+        $stats = (new DockerClient($this->executor($output)))->stats();
+
+        $this->assertSame('0.50%', $stats['web']['cpu']);
+        $this->assertSame('120MiB / 1GiB', $stats['web']['memory']);
+    }
+
+    #[Test]
+    public function it_parses_disk_usage()
+    {
+        $output = implode("\n", [
+            json_encode(['Type' => 'Images', 'TotalCount' => 12, 'Size' => '4.2GB', 'Reclaimable' => '1.1GB (26%)']),
+            json_encode(['Type' => 'Build Cache', 'TotalCount' => 80, 'Size' => '900MB', 'Reclaimable' => '900MB']),
+        ]);
+
+        $disk = (new DockerClient($this->executor($output)))->diskUsage();
+
+        $this->assertSame('Images', $disk[0]['type']);
+        $this->assertSame('4.2GB', $disk[0]['size']);
+        $this->assertSame('900MB', $disk[1]['reclaimable']);
     }
 
     #[Test]
@@ -103,6 +171,39 @@ class DockerClientTest extends TestCase
     }
 
     #[Test]
+    public function logs_can_narrow_the_window_and_drop_timestamps()
+    {
+        $captured = null;
+        $client = new DockerClient($this->executor('log line', 0, $captured));
+
+        $client->logs('web', 100, timestamps: false, since: '15m');
+
+        $this->assertStringContainsString('--since 15m', $captured);
+        $this->assertStringNotContainsString('--timestamps', $captured);
+    }
+
+    #[Test]
+    public function a_malformed_since_window_is_ignored()
+    {
+        $captured = null;
+        $client = new DockerClient($this->executor('log line', 0, $captured));
+
+        $client->logs('web', 100, since: '2 days');
+
+        $this->assertStringNotContainsString('--since', $captured);
+    }
+
+    #[Test]
+    public function a_log_failure_raises_instead_of_returning_the_error_as_content()
+    {
+        $client = new DockerClient($this->executor('Error: No such container: web', 1));
+
+        $this->expectException(DockerException::class);
+
+        $client->logs('web');
+    }
+
+    #[Test]
     public function actions_build_the_expected_command()
     {
         $captured = null;
@@ -111,6 +212,19 @@ class DockerClientTest extends TestCase
         $client->action('restart', 'web');
 
         $this->assertSame("docker restart 'web'", $captured);
+    }
+
+    #[Test]
+    public function kill_and_unpause_are_valid_actions()
+    {
+        $captured = null;
+        $client = new DockerClient($this->executor('', 0, $captured));
+
+        $client->action('kill', 'web');
+        $this->assertSame("docker kill 'web'", $captured);
+
+        $client->action('unpause', 'web');
+        $this->assertSame("docker unpause 'web'", $captured);
     }
 
     #[Test]

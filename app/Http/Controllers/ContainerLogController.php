@@ -12,18 +12,24 @@ class ContainerLogController extends Controller
 {
     /**
      * A container's log tail, fetched on demand and polled by the detail
-     * page (true streaming is deferred — see PLAN.md).
+     * page (true streaming is deferred — see PLAN.md). Failures come back
+     * under `error` so the UI doesn't render them as log content.
      */
     public function show(Request $request, Server $server, string $name): JsonResponse
     {
         $this->ensureOwnedByCurrentTeam($request, $server->team_id);
 
         try {
-            $logs = DockerClient::forServer($server)->logs($name, (int) $request->query('tail', 500));
-        } catch (Throwable $e) {
-            $logs = $e->getMessage();
-        }
+            $logs = DockerClient::forServer($server)->logs(
+                $name,
+                tail: (int) $request->query('tail', 500),
+                timestamps: $request->boolean('timestamps', true),
+                since: $request->query('since'),
+            );
 
-        return response()->json(['logs' => $logs]);
+            return response()->json(['logs' => $logs, 'error' => null]);
+        } catch (Throwable $e) {
+            return response()->json(['logs' => '', 'error' => $e->getMessage()]);
+        }
     }
 }
