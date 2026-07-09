@@ -52,6 +52,10 @@ return [
                 'host' => env('REVERB_CLIENT_HOST'),
                 'port' => (int) env('REVERB_CLIENT_PORT', 443),
                 'scheme' => env('REVERB_CLIENT_SCHEME', 'https'),
+                // Optional path prefix (e.g. "/ws") for serving the websocket
+                // on the app's own hostname via path routing instead of a
+                // dedicated hostname. Must match REVERB_SERVER_PATH.
+                'path' => env('REVERB_CLIENT_PATH', ''),
             ],
         ],
 

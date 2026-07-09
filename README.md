@@ -115,10 +115,17 @@ REVERB_APP_SECRET=  # openssl rand -hex 24
 REVERB_HOST=reverb  # where THIS APP delivers events (compose service name)
 REVERB_PORT=8080
 REVERB_SCHEME=http
-REVERB_CLIENT_HOST=ws.deploy.example.com  # where BROWSERS connect
+REVERB_CLIENT_HOST=deploy-ws.example.com  # where BROWSERS connect
 REVERB_CLIENT_PORT=443
 REVERB_CLIENT_SCHEME=https
 ```
+
+Pick a websocket hostname your certificate actually covers — Cloudflare's
+universal certificate is a first-level wildcard only, so use a sibling
+(`deploy-ws.example.com`), not a nested one (`ws.deploy.example.com`).
+Alternatively serve the websocket on the app's own hostname by path: set
+`REVERB_SERVER_PATH=/ws` and `REVERB_CLIENT_PATH=/ws` and route
+`deploy.example.com/ws*` at the reverb container in your proxy.
 
 `AUTO_MIGRATE=1` creates/updates the schema on start (`--isolated`, so app and
 worker don't race). Then create your account:

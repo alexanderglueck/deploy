@@ -66,6 +66,7 @@ class HandleInertiaRequests extends Middleware
             'host' => $connection['client']['host'],
             'port' => $connection['client']['port'],
             'scheme' => $connection['client']['scheme'],
+            'path' => $connection['client']['path'],
         ];
     }
 }

@@ -107,6 +107,43 @@ class DockerControllerTest extends TestCase
     }
 
     #[Test]
+    public function echo_connection_details_are_shared_when_reverb_is_configured()
+    {
+        $this->fakeDocker();
+
+        config([
+            'broadcasting.default' => 'reverb',
+            'broadcasting.connections.reverb.key' => 'test-key',
+            'broadcasting.connections.reverb.client' => [
+                'host' => 'deploy-ws.example.com',
+                'port' => 443,
+                'scheme' => 'https',
+                'path' => '/ws',
+            ],
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $this->actingAs($user)->get(route('docker.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('reverb.key', 'test-key')
+                ->where('reverb.host', 'deploy-ws.example.com')
+                ->where('reverb.path', '/ws')
+            );
+    }
+
+    #[Test]
+    public function echo_connection_details_are_absent_without_reverb()
+    {
+        $this->fakeDocker();
+
+        $user = User::factory()->withPersonalTeam()->create();
+
+        $this->actingAs($user)->get(route('docker.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('reverb', null));
+    }
+
+    #[Test]
     public function stats_load_as_a_partial_reload()
     {
         $this->fakeDocker(

@@ -207,10 +207,14 @@ Team ─┬─ Project ── Workflow (event → server → steps) ── Workf
      dashboard drops its 3s deployment poll.
    - ✅ **Infra**: `deploy-reverb` service in `tools/deploy/compose.yml` and a
      `reverb` service in the dev compose; tunnel route
-     `ws.deploy.<domain> -> http://deploy-reverb:8080` **without** Cloudflare
+     `deploy-ws.<domain> -> http://deploy-reverb:8080` **without** Cloudflare
      Access (a websocket handshake can't follow the Access redirect; private
      channels still authorize via `/broadcasting/auth` on the protected app);
-     `REVERB_*` keys in `/srv/secrets/deploy.env`.
+     `REVERB_*` keys in `/srv/secrets/deploy.env`. The ws hostname must be a
+     **sibling** (`deploy-ws.*`), not nested (`ws.deploy.*`) — Cloudflare's
+     universal cert is a first-level wildcard only. Same-hostname path
+     routing is supported as the alternative
+     (`REVERB_SERVER_PATH`/`REVERB_CLIENT_PATH`, e.g. `/ws`).
 
 ### Rollback vs. image pruning
 
