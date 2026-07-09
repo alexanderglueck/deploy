@@ -90,6 +90,22 @@ class WorkflowControllerTest extends TestCase
     }
 
     #[Test]
+    public function a_compose_file_with_shell_metacharacters_is_rejected()
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $project = $this->project($user);
+        $server = Server::factory()->create(['team_id' => $user->currentTeam->id]);
+
+        $this->actingAs($user)->post(route('workflow.store', $project), [
+            'event' => Event::PUSH,
+            'server' => $server->ulid,
+            'steps' => [
+                ['type' => StepType::DOCKER_DEPLOY, 'config' => ['compose_file' => '$(id)/compose.yml']],
+            ],
+        ])->assertSessionHasErrors(['steps.0.config.compose_file']);
+    }
+
+    #[Test]
     public function unknown_config_keys_are_stripped()
     {
         $user = User::factory()->withPersonalTeam()->create();

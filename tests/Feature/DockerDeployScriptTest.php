@@ -85,6 +85,24 @@ class DockerDeployScriptTest extends TestCase
     }
 
     #[Test]
+    public function a_hostile_compose_file_is_neither_substituted_nor_breaks_out()
+    {
+        // WorkflowController validates the shape, but the generator must be
+        // safe on its own — it also runs against snapshotted config on retry
+        // and rollback.
+        $script = DockerDeployScript::generate($this->deployment(), [
+            'compose_file' => '$(id > /tmp/pwned)',
+        ]);
+
+        // Single-quoted by escapeshellarg on the assignment...
+        $this->assertStringContainsString("COMPOSE_FILE='\$(id > /tmp/pwned)'", $script);
+        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d', $script);
+        // ...and never interpolated raw into a double-quoted line, which is
+        // where bash would run the command substitution.
+        $this->assertStringNotContainsString('via $(id', $script);
+    }
+
+    #[Test]
     public function a_manual_deploy_clones_the_default_branch_without_sha_tags()
     {
         $deployment = $this->deployment([

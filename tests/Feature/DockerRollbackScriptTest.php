@@ -30,6 +30,25 @@ class DockerRollbackScriptTest extends TestCase
         $this->assertStringContainsString("if docker image inspect 'my-app-web:abc123'", $script);
         $this->assertStringContainsString("docker tag 'my-app-web:abc123' 'my-app-web:latest'", $script);
 
-        $this->assertStringContainsString("docker compose -f '/srv/server-config/apps/my-app/compose.yml' up -d", $script);
+        // The path is bound to a shell variable (set from the single-quoted
+        // literal) and referenced by name, so it is never re-evaluated.
+        $this->assertStringContainsString("COMPOSE_FILE='/srv/server-config/apps/my-app/compose.yml'", $script);
+        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d', $script);
+    }
+
+    #[Test]
+    public function a_hostile_compose_file_is_neither_substituted_nor_breaks_out()
+    {
+        $script = DockerRollbackScript::generate(Deployment::factory()->create(), [
+            'app' => 'my-app',
+            'sha' => 'abc123',
+            'compose_file' => '$(id > /tmp/pwned)',
+        ]);
+
+        // Single-quoted by escapeshellarg on the assignment...
+        $this->assertStringContainsString("COMPOSE_FILE='\$(id > /tmp/pwned)'", $script);
+        // ...and never interpolated raw into a double-quoted line, which is
+        // where bash would run the command substitution.
+        $this->assertStringNotContainsString('via $(id', $script);
     }
 }

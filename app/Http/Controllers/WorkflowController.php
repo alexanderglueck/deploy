@@ -126,7 +126,9 @@ class WorkflowController extends Controller
             'steps.*.config.path' => 'required_if:steps.*.type,'.StepType::SCRIPT_FILE.'|nullable|string',
             'steps.*.config.args' => 'nullable|string',
             'steps.*.config.app' => ['nullable', 'string', 'regex:/^[\w-]+$/'],
-            'steps.*.config.compose_file' => 'nullable|string',
+            // A filesystem path; flows into generated deploy scripts, so it is
+            // shape-checked like the other script-bound fields.
+            'steps.*.config.compose_file' => ['nullable', 'string', 'regex:#^[\w./-]+$#'],
             'steps.*.config.target' => ['nullable', 'string', 'regex:/^[\w-]+$/'],
         ]);
     }

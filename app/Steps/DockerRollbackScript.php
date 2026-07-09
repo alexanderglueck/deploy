@@ -42,8 +42,9 @@ class DockerRollbackScript
             docker tag {$webImageQ} {$webLatestQ}
         fi
 
-        echo "Restarting {$app} via {$composeFile}..."
-        docker compose -f {$composeFileQ} up -d
+        COMPOSE_FILE={$composeFileQ}
+        echo "Restarting {$app} via \$COMPOSE_FILE..."
+        docker compose -f "\$COMPOSE_FILE" up -d
 
         echo "Rolled back {$app} to {$sha}."
         BASH;

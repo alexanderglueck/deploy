@@ -103,8 +103,9 @@ class DockerDeployScript
             docker build -f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .
         fi
 
-        echo "Starting {$app} via {$composeFile}..."
-        docker compose -f {$composeFileQ} up -d
+        COMPOSE_FILE={$composeFileQ}
+        echo "Starting {$app} via \$COMPOSE_FILE..."
+        docker compose -f "\$COMPOSE_FILE" up -d
 
         echo "Deployed {$app}."
         BASH;
