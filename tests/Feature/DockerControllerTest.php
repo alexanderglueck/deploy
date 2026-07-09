@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\ContainerActionUpdated;
 use App\Execution\ExecutionResult;
 use App\Execution\ExecutorFactory;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -9,6 +10,7 @@ use App\Models\ContainerAction;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
@@ -143,13 +145,32 @@ class DockerControllerTest extends TestCase
             ->assertRedirect(route('docker.index'))
             ->assertSessionHasNoErrors();
 
+        // dispatchAfterResponse jobs run on kernel terminate, so by now the
+        // queued action has executed against the (fake) daemon.
         $this->assertDatabaseHas('container_actions', [
             'server_id' => $server->id,
             'user_id' => $user->id,
             'container' => 'web',
             'action' => 'restart',
-            'successful' => true,
+            'status' => 'ok',
         ]);
+    }
+
+    #[Test]
+    public function every_status_transition_is_broadcast_to_the_team_channel()
+    {
+        Event::fake([ContainerActionUpdated::class]);
+
+        $this->fakeDocker(containers: [['ID' => 'abc', 'Names' => 'web', 'Image' => 'nginx', 'State' => 'running', 'Status' => 'Up']]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $server = Server::factory()->create(['team_id' => $user->currentTeam->id]);
+
+        $this->actingAs($user)
+            ->post(route('container.action', [$server, 'web']), ['action' => 'restart']);
+
+        // queued (controller) + running + ok (job).
+        Event::assertDispatchedTimes(ContainerActionUpdated::class, 3);
     }
 
     #[Test]
@@ -194,9 +215,11 @@ class DockerControllerTest extends TestCase
     }
 
     #[Test]
-    public function an_executor_exception_during_an_action_flashes_and_is_recorded()
+    public function an_executor_exception_during_an_action_marks_it_failed()
     {
-        // A timed-out local process raises rather than returning an exit code.
+        // A timed-out local process raises rather than returning an exit
+        // code. The response was already sent ("queued"), so the failure
+        // lands on the audit row, not in a banner.
         ExecutorFactory::fakeUsing(function (string $script) {
             if (str_contains($script, 'docker ps')) {
                 return json_encode(['ID' => 'abc', 'Names' => 'web', 'Image' => 'x', 'State' => 'running', 'Status' => 'Up']);
@@ -212,12 +235,12 @@ class DockerControllerTest extends TestCase
             ->from(route('docker.index'))
             ->post(route('container.action', [$server, 'web']), ['action' => 'stop'])
             ->assertRedirect(route('docker.index'))
-            ->assertSessionHas('flash.bannerStyle', 'danger');
+            ->assertSessionHas('flash.bannerStyle', 'success');
 
         $this->assertDatabaseHas('container_actions', [
             'container' => 'web',
             'action' => 'stop',
-            'successful' => false,
+            'status' => 'failed',
         ]);
     }
 
@@ -234,7 +257,7 @@ class DockerControllerTest extends TestCase
             'user_id' => $user->id,
             'container' => 'web',
             'action' => 'restart',
-            'successful' => true,
+            'status' => 'ok',
         ]);
 
         $this->actingAs($user)->get(route('docker.index'))
@@ -242,6 +265,7 @@ class DockerControllerTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('actions', 1)
                 ->where('actions.0.container', 'web')
+                ->where('actions.0.status', 'ok')
                 ->where('actions.0.user_name', $user->name)
             );
     }

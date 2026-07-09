@@ -20,6 +20,8 @@
         "ziggy-js": "^2.6.2"
     },
     "dependencies": {
-        "ansi_up": "^6.0.6"
+        "ansi_up": "^6.0.6",
+        "laravel-echo": "^2.3.7",
+        "pusher-js": "^8.5.0"
     }
 }

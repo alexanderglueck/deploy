@@ -148,8 +148,9 @@ class DockerClient
         $result = $this->executor->run('docker inspect --format '.escapeshellarg('{{json .}}').' '.escapeshellarg($name));
 
         if ($result->failed()) {
-            // "No such object" is a missing container, not a real failure.
-            if (str_contains($result->output, 'No such object')) {
+            // A missing container, not a real failure. The casing varies by
+            // docker version ("No such object" / "no such object").
+            if (str_contains(strtolower($result->output), 'no such object')) {
                 return null;
             }
 

@@ -9,18 +9,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One Docker dashboard lifecycle action (start/stop/restart/...) run against
- * a container — the audit trail behind the "Recent actions" card.
+ * a container — the audit trail behind the "Recent actions" card, and the
+ * status record while the action runs asynchronously
+ * (queued → running → ok / failed).
  */
 class ContainerAction extends Model
 {
     use HasPublicUlid;
+
+    public const PENDING_STATUSES = ['queued', 'running'];
 
     protected $fillable = [
         'server_id',
         'user_id',
         'container',
         'action',
-        'successful',
+        'status',
         'output',
     ];
 
@@ -43,11 +47,9 @@ class ContainerAction extends Model
         'user',
     ];
 
-    protected function casts(): array
+    public function isPending(): bool
     {
-        return [
-            'successful' => 'boolean',
-        ];
+        return in_array($this->status, self::PENDING_STATUSES, true);
     }
 
     protected function userName(): Attribute

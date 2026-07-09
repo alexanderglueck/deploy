@@ -39,6 +39,33 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             // Shows the legacy-logs nav item when the viewer is configured.
             'legacyLogsEnabled' => (bool) config('deploy.legacy_logs_path'),
+            // Websocket connection details for Echo, shared at runtime so the
+            // published image needs no baked-in VITE_ values. Null (no reverb
+            // configured) means the frontend sticks to polling.
+            'reverb' => $this->reverbClient(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function reverbClient(): ?array
+    {
+        if (config('broadcasting.default') !== 'reverb') {
+            return null;
+        }
+
+        $connection = config('broadcasting.connections.reverb');
+
+        if (! $connection['key'] || ! $connection['client']['host']) {
+            return null;
+        }
+
+        return [
+            'key' => $connection['key'],
+            'host' => $connection['client']['host'],
+            'port' => $connection['client']['port'],
+            'scheme' => $connection['client']['scheme'],
         ];
     }
 }

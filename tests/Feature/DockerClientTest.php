@@ -156,6 +156,11 @@ class DockerClientTest extends TestCase
         $client = new DockerClient($this->executor('Error: No such object: nope', 1));
 
         $this->assertNull($client->inspect('nope'));
+
+        // Newer daemons lowercase the message.
+        $client = new DockerClient($this->executor('error: no such object: nope', 1));
+
+        $this->assertNull($client->inspect('nope'));
     }
 
     #[Test]

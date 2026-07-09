@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -7,12 +9,13 @@ use Illuminate\Support\Facades\Broadcast;
 | Broadcast Channels
 |--------------------------------------------------------------------------
 |
-| Here you may register all of the event broadcasting channels that your
-| application supports. The given channel authorization callbacks are
-| used to check if an authenticated user can listen to the channel.
+| Everything realtime happens on one private channel per team, mirroring
+| the app's authorization model (all resources are team-scoped).
 |
 */
 
-Broadcast::channel('App.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+Broadcast::channel('team.{teamUlid}', function (User $user, string $teamUlid) {
+    $team = Team::where('ulid', $teamUlid)->first();
+
+    return $team !== null && $user->belongsToTeam($team);
 });

@@ -1,11 +1,12 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { Link, useForm, usePoll } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import LogOutput from '@/Components/LogOutput.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { echoClient } from '@/echo';
 
 const props = defineProps({
     server: Object,
@@ -32,6 +33,7 @@ const submitAction = (action) => {
     actionForm.action = action;
     actionForm.post(route('container.action', [props.server, props.name]), {
         preserveScroll: true,
+        onSuccess: () => (pending.value = true),
         onFinish: () => (pendingAction.value = null),
     });
 };
@@ -40,8 +42,35 @@ const isRunning = () => props.container?.state === 'running' || props.container?
 const isPaused = () => props.container?.state === 'paused';
 
 // Keep the inspect fields (state, exit code, restarts) live alongside the
-// log polling below.
+// log polling below. The Reverb channel makes action outcomes instant when
+// available; polling stays on as the fallback.
 usePoll(5000, { only: ['container', 'error'] });
+
+// True while an action on this container is queued or running (set
+// optimistically on submit, settled by broadcasts).
+const pending = ref(false);
+
+const page = usePage();
+const teamUlid = page.props.auth?.user?.current_team?.ulid;
+
+onMounted(() => {
+    const echo = echoClient(page.props.reverb);
+    if (!echo || !teamUlid) return;
+
+    echo.private(`team.${teamUlid}`).listen('.container-action.updated', (event) => {
+        if (event.server !== props.server.ulid || event.action.container !== props.name) return;
+
+        pending.value = event.action.status === 'queued' || event.action.status === 'running';
+
+        if (!pending.value) {
+            router.reload({ only: ['container', 'error'] });
+        }
+    });
+});
+
+onBeforeUnmount(() => {
+    if (teamUlid) echoClient(page.props.reverb)?.leave(`team.${teamUlid}`);
+});
 
 // Logs are fetched on demand and polled while this page is open (true
 // streaming is deferred — FrankenPHP classic mode).
@@ -113,7 +142,10 @@ const fmt = (value) => (value && !value.startsWith('0001') ? new Date(value).toL
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Docker — {{ name }}
                 </h2>
-                <div v-if="container" class="flex items-center gap-2 text-xs font-medium">
+                <div v-if="container && pending" class="text-xs font-medium uppercase tracking-widest text-gray-400">
+                    working…
+                </div>
+                <div v-else-if="container" class="flex items-center gap-2 text-xs font-medium">
                     <button v-if="isPaused()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-green-700 hover:bg-gray-50" @click="runAction('unpause')">Unpause</button>
                     <button v-else-if="!isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-green-700 hover:bg-gray-50" @click="runAction('start')">Start</button>
                     <button v-if="isRunning()" type="button" class="rounded-md border border-gray-300 bg-white px-3 py-1.5 uppercase tracking-widest text-indigo-700 hover:bg-gray-50" @click="runAction('restart')">Restart</button>

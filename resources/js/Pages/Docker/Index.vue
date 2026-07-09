@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { Link, router, useForm, usePoll } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Link, router, useForm, usePage, usePoll } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmationModal from '@/Components/ConfirmationModal.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { echoClient } from '@/echo';
 
 const props = defineProps({
     servers: Array,
@@ -112,9 +113,44 @@ const containerStats = (container) => props.stats?.containers?.[container.name];
 
 const fmtTime = (value) => (value ? new Date(value).toLocaleString() : '—');
 
-// Keep the view live while the page is open.
+const ACTION_STATUS_CLASS = {
+    ok: 'bg-green-100 text-green-700',
+    failed: 'bg-red-100 text-red-700',
+    running: 'bg-indigo-100 text-indigo-700',
+    queued: 'bg-amber-100 text-amber-700',
+};
+
+// Containers with an in-flight action get their buttons disabled.
+const pendingNames = computed(() => new Set(
+    props.actions
+        .filter((entry) => entry.status === 'queued' || entry.status === 'running')
+        .map((entry) => entry.container),
+));
+
+const isPending = (container) => pendingNames.value.has(container.name);
+
+// Keep the view live while the page is open. Polling stays on as the
+// fallback; the Reverb channel below makes updates instant when available.
 const { start, stop } = usePoll(5000, { only: ['containers', 'images', 'actions', 'error'] }, { autoStart: false });
 watch(() => props.server?.ulid, (has) => (has ? start() : stop()), { immediate: true });
+
+const page = usePage();
+const teamUlid = page.props.auth?.user?.current_team?.ulid;
+
+onMounted(() => {
+    const echo = echoClient(page.props.reverb);
+    if (!echo || !teamUlid) return;
+
+    echo.private(`team.${teamUlid}`).listen('.container-action.updated', (event) => {
+        if (event.server === props.server?.ulid) {
+            router.reload({ only: ['containers', 'actions'] });
+        }
+    });
+});
+
+onBeforeUnmount(() => {
+    if (teamUlid) echoClient(page.props.reverb)?.leave(`team.${teamUlid}`);
+});
 </script>
 
 <template>
@@ -213,7 +249,10 @@ watch(() => props.server?.ulid, (has) => (has ? start() : stop()), { immediate: 
                                             <td v-if="showStats" class="px-4 py-2 text-gray-500">{{ containerStats(container)?.memory || '—' }}</td>
                                             <td class="px-4 py-2 text-gray-500">{{ container.ports || '—' }}</td>
                                             <td class="px-4 py-2">
-                                                <div class="flex items-center justify-end gap-2 text-xs font-medium">
+                                                <div v-if="isPending(container)" class="flex items-center justify-end text-xs font-medium text-gray-400">
+                                                    working…
+                                                </div>
+                                                <div v-else class="flex items-center justify-end gap-2 text-xs font-medium">
                                                     <button v-if="isPaused(container)" type="button" class="text-green-600 hover:underline" @click="runAction(container, 'unpause')">Unpause</button>
                                                     <button v-else-if="!isRunning(container)" type="button" class="text-green-600 hover:underline" @click="runAction(container, 'start')">Start</button>
                                                     <button v-if="isRunning(container)" type="button" class="text-indigo-600 hover:underline" @click="runAction(container, 'restart')">Restart</button>
@@ -294,10 +333,10 @@ watch(() => props.server?.ulid, (has) => (has ? start() : stop()), { immediate: 
                                         <td class="px-4 py-2">
                                             <span
                                                 class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                                                :class="entry.successful ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-                                                :title="entry.successful ? '' : (entry.output || '')"
+                                                :class="ACTION_STATUS_CLASS[entry.status] ?? 'bg-gray-100 text-gray-500'"
+                                                :title="entry.status === 'failed' ? (entry.output || '') : ''"
                                             >
-                                                {{ entry.successful ? 'ok' : 'failed' }}
+                                                {{ entry.status }}
                                             </span>
                                         </td>
                                     </tr>

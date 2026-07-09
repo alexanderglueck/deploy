@@ -39,6 +39,26 @@ services:
       - ./:/app
       - .docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
 
+  # Websocket server for realtime dashboard updates. The app reaches it at
+  # reverb:8080 (REVERB_HOST); browsers connect via the published port
+  # (REVERB_CLIENT_HOST/PORT, localhost:8106 by default).
+  reverb:
+    build:
+      context: .
+      target: dev
+      args:
+        HOST_USER_ID: ${HOST_USER_ID:-1000}
+        HOST_GROUP_ID: ${HOST_GROUP_ID:-1000}
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    restart: unless-stopped
+    ports:
+      - "8106:8080"
+    depends_on:
+      - mysql
+    volumes:
+      - ./:/app
+      - .docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+
   mysql:
     image: mariadb:11
     ports:

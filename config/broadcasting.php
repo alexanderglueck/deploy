@@ -8,54 +8,51 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option controls the default broadcaster that will be used by the
-    | framework when an event needs to be broadcast. You may set this to
-    | any of the connections defined in the "connections" array below.
+    | framework when an event needs to be broadcast. Set to "reverb" to get
+    | realtime dashboard updates (requires a running reverb container);
+    | with "null" everything degrades to Inertia polling.
     |
-    | Supported: "pusher", "ably", "redis", "log", "null"
+    | Supported: "reverb", "log", "null"
     |
     */
 
-    'default' => env('BROADCAST_DRIVER', 'null'),
+    'default' => env('BROADCAST_CONNECTION', 'null'),
 
     /*
     |--------------------------------------------------------------------------
     | Broadcast Connections
     |--------------------------------------------------------------------------
     |
-    | Here you may define all of the broadcast connections that will be used
-    | to broadcast events to other systems or over websockets. Samples of
-    | each available type of connection are provided inside this array.
+    | The reverb connection carries two addresses: `options` is where THIS APP
+    | delivers events (the reverb container, reachable on the compose
+    | network), and `client` is where BROWSERS connect (the public websocket
+    | hostname routed to the reverb container). The client block is shared
+    | with the frontend at runtime via Inertia — nothing is baked into the
+    | built assets, so one image works for every install.
     |
     */
 
     'connections' => [
 
-        'pusher' => [
-            'driver' => 'pusher',
-            'key' => env('PUSHER_APP_KEY'),
-            'secret' => env('PUSHER_APP_SECRET'),
-            'app_id' => env('PUSHER_APP_ID'),
+        'reverb' => [
+            'driver' => 'reverb',
+            'key' => env('REVERB_APP_KEY'),
+            'secret' => env('REVERB_APP_SECRET'),
+            'app_id' => env('REVERB_APP_ID'),
             'options' => [
-                'cluster' => env('PUSHER_APP_CLUSTER'),
-                'host' => env('PUSHER_HOST') ?: 'api-'.env('PUSHER_APP_CLUSTER', 'mt1').'.pusher.com',
-                'port' => env('PUSHER_PORT', 443),
-                'scheme' => env('PUSHER_SCHEME', 'https'),
-                'encrypted' => true,
-                'useTLS' => env('PUSHER_SCHEME', 'https') === 'https',
+                'host' => env('REVERB_HOST'),
+                'port' => env('REVERB_PORT', 443),
+                'scheme' => env('REVERB_SCHEME', 'https'),
+                'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
             ],
-        ],
-
-        'ably' => [
-            'driver' => 'ably',
-            'key' => env('ABLY_KEY'),
-        ],
-
-        'redis' => [
-            'driver' => 'redis',
-            'connection' => 'default',
+            'client' => [
+                'host' => env('REVERB_CLIENT_HOST'),
+                'port' => (int) env('REVERB_CLIENT_PORT', 443),
+                'scheme' => env('REVERB_CLIENT_SCHEME', 'https'),
+            ],
         ],
 
         'log' => [

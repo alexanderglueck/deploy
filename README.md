@@ -76,6 +76,19 @@ services:
       # Root-equivalent: needed for Docker deploy steps on the local server.
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # Optional: realtime dashboard updates over websockets. Route your public
+  # websocket hostname (REVERB_CLIENT_HOST) at this container; without it,
+  # set BROADCAST_CONNECTION=null and the dashboard falls back to polling.
+  reverb:
+    image: ghcr.io/alexanderglueck/deploy:latest
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    restart: unless-stopped
+    ports: ["8081:8080"]
+    env_file: [deploy.env]
+    volumes:
+      - deploy-storage:/app/storage
+      - deploy-db:/data
+
 volumes:
   deploy-storage:
   deploy-db:
@@ -92,6 +105,19 @@ QUEUE_CONNECTION=database
 AUTO_MIGRATE=1      # migrate on container start (updates = pull + restart)
 DEPLOY_GIT_TOKEN=   # token for cloning private repos (contents:read)
 DEPLOY_NOTIFY_URL=  # optional: JSON POST here when a deployment fails
+
+# Realtime dashboard updates (reverb service above); use BROADCAST_CONNECTION=null
+# to skip websockets entirely — everything degrades to polling.
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=deploy
+REVERB_APP_KEY=     # openssl rand -hex 24
+REVERB_APP_SECRET=  # openssl rand -hex 24
+REVERB_HOST=reverb  # where THIS APP delivers events (compose service name)
+REVERB_PORT=8080
+REVERB_SCHEME=http
+REVERB_CLIENT_HOST=ws.deploy.example.com  # where BROWSERS connect
+REVERB_CLIENT_PORT=443
+REVERB_CLIENT_SCHEME=https
 ```
 
 `AUTO_MIGRATE=1` creates/updates the schema on start (`--isolated`, so app and

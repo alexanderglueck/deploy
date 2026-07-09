@@ -179,24 +179,38 @@ Team ─┬─ Project ── Workflow (event → server → steps) ── Workf
    concurrent viewers. **Absorbing `deploy-server-config` / retiring adnanh:
    deferred until the manager has run in production for a while** — the thing
    that recreates the deploy manager should stay dumber than the manager.
-5. **M5 — Realtime (planned)**: replace polling and synchronous container
-   actions with **queued jobs + Laravel Reverb** broadcasts. Reverb runs as its
-   own container (`php artisan reverb:start` on the same image), so the
-   FrankenPHP classic-mode constraint that killed SSE doesn't apply — websocket
-   connections live in Reverb's event loop, not in PHP-FPM/Franken processes.
-   - **Container actions become jobs**: the POST dispatches and returns
-     immediately; the job updates its `container_actions` row
-     (queued → running → ok/failed — the audit table added with the dashboard
-     is the status record) and broadcasts on a private team channel. UI buttons
-     show per-container pending state instead of a blocking form post.
-   - **Log & deployment streaming**: the worker follows `docker logs -f` /
-     step output and broadcasts chunks; Echo replaces the 3s log poll and the
-     5s dashboard poll (fall back to polling when the socket is down).
-   - **Infra**: `reverb` service in `tools/deploy/compose.yml` (same GHCR
-     image), a tunnel route for the websocket host (Cloudflare proxies
-     websockets), `REVERB_*` keys in `/srv/secrets/deploy.env`, worker gains
-     `--queue=actions,default` priority so container actions don't sit behind
-     a long build.
+5. **M5 — Realtime** *(foundation + async actions done 2026-07-09)*: replace
+   polling and synchronous container actions with **async jobs + Laravel
+   Reverb** broadcasts. Reverb runs as its own container (`php artisan
+   reverb:start` on the same image), so the FrankenPHP classic-mode constraint
+   that killed SSE doesn't apply — websocket connections live in Reverb's
+   event loop, not in PHP-FPM/Franken processes.
+   - ✅ **Container actions are async**: the POST creates the
+     `container_actions` row and returns immediately; `RunContainerAction`
+     executes via **`dispatchAfterResponse()`** — deliberately NOT the queue
+     worker, where a long image build would delay a restart by minutes, and
+     the web process was going to be pinned for the same duration under the
+     old synchronous flow anyway. Every transition
+     (queued → running → ok/failed) is broadcast as `ContainerActionUpdated`
+     on the private `team.{ulid}` channel; the UI disables the container's
+     buttons while pending. Broadcast failures are swallowed — polling (still
+     on) is the fallback, and installs without reverb (`BROADCAST_CONNECTION=null`)
+     just never get the events. Echo config is shared at runtime via Inertia
+     (`reverb` prop) so no VITE_ values are baked into the published image.
+   - ⏳ **Log & deployment streaming**: follow `docker logs -f` / step output
+     and broadcast chunks to replace the 3s log poll and shrink the dashboard
+     poll. Needs a home that neither blocks the single queue worker nor pins
+     a web process per viewer (candidate: reverb-adjacent artisan process or
+     a dedicated lightweight container).
+   - ⏳ **Deployment status realtime**: broadcast deployment/step transitions
+     from the worker (cheap — events already exist as model updates) so the
+     dashboard drops its 3s deployment poll.
+   - ✅ **Infra**: `deploy-reverb` service in `tools/deploy/compose.yml` and a
+     `reverb` service in the dev compose; tunnel route
+     `ws.deploy.<domain> -> http://deploy-reverb:8080` **without** Cloudflare
+     Access (a websocket handshake can't follow the Access redirect; private
+     channels still authorize via `/broadcasting/auth` on the protected app);
+     `REVERB_*` keys in `/srv/secrets/deploy.env`.
 
 ### Rollback vs. image pruning
 
