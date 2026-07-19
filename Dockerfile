@@ -31,7 +31,9 @@ FROM php:8.5-fpm AS base
 WORKDIR /app
 
 # Single cached download, already executable (no chmod/sync step needed).
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+# Pinned: a `latest` URL re-resolves on every build and busts the layer cache
+# (and everything after it) whenever upstream releases.
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.11.12/install-php-extensions /usr/local/bin/
 RUN install-php-extensions \
     bcmath \
     gd \
