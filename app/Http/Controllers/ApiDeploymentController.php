@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessDeployments;
-use App\Jobs\PruneDeployments;
+use App\Actions\TriggerDeployment;
 use App\Models\Deployment;
 use App\Models\Project;
 use App\Models\Workflow;
 use App\Support\Event;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ApiDeploymentController extends Controller
 {
-    public function store(Request $request, Project $project): string
+    public function store(Request $request, Project $project, TriggerDeployment $trigger): string
     {
         $data = match (true) {
             $request->hasHeader('X-Gitlab-Event') => $this->fromGitLab($request, $project),
@@ -42,28 +40,9 @@ class ApiDeploymentController extends Controller
             return 'IGNORED';
         }
 
-        // Cancel older pending deployments
-        Deployment::query()
-            ->where([
-                'project_id' => $data['project_id'],
-                'ref' => $data['ref'],
-                'event' => $data['event'],
-                'repository' => $data['repository'],
-            ])
-            ->whereNull('processed_at')
-            ->whereNull('deployed_at')
-            ->whereNull('canceled_at')
-            ->update([
-                'canceled_at' => Carbon::now(),
-            ]);
-
-        // Queue new pending deployment
-        ProcessDeployments::dispatch(Deployment::create($data));
-
-        // Piggy-back retention pruning on webhook traffic, at most once a day.
-        if (Cache::add('deploy:prune-scheduled', true, 60 * 60 * 24)) {
-            PruneDeployments::dispatch();
-        }
+        // Superseding pending work, creating the deployment and queueing it lives
+        // in TriggerDeployment so the management API behaves identically.
+        $trigger($data);
 
         return 'OK';
     }

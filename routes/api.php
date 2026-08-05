@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\DeploymentController as ApiDeploymentStatusController;
+use App\Http\Controllers\Api\ProjectController as ApiProjectController;
 use App\Http\Controllers\ApiDeploymentController;
 use App\Http\Middleware\VerifyWebhookSignature;
 use Illuminate\Support\Facades\Route;
@@ -7,3 +9,24 @@ use Illuminate\Support\Facades\Route;
 Route::post('/deploy/{project:deploy_endpoint}', [ApiDeploymentController::class, 'store'])
     ->middleware(VerifyWebhookSignature::class)
     ->name('api.deployment.store');
+
+/*
+ * Management API (Sanctum tokens from Jetstream's "API Tokens" screen).
+ *
+ * Scriptable equivalent of the project screens, so projects can be registered and
+ * deployed from a terminal -- the UI is behind Cloudflare Access and cannot be
+ * driven headlessly. Everything is scoped to the token owner's teams.
+ *
+ * Deliberately limited to this application's own data: it never writes another
+ * repository's compose files, because the deploy manager is meant to work
+ * independently of any particular server config repo.
+ */
+Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+    Route::get('/projects', [ApiProjectController::class, 'index']);
+    Route::post('/projects', [ApiProjectController::class, 'store']);
+    Route::get('/projects/{project}', [ApiProjectController::class, 'show']);
+    Route::patch('/projects/{project}', [ApiProjectController::class, 'update']);
+    Route::post('/projects/{project}/deploy', [ApiProjectController::class, 'deploy']);
+
+    Route::get('/deployments/{deployment}', [ApiDeploymentStatusController::class, 'show']);
+});
