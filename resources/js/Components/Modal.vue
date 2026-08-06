@@ -92,7 +92,14 @@ const maxWidthClass = computed(() => {
                 leave-from-class="opacity-100 translate-y-0 sm:scale-100"
                 leave-to-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-                <div v-show="show" class="mb-6 bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto" :class="maxWidthClass">
+                <!--
+                    `relative` is load-bearing: the backdrop above is `fixed`, so it paints
+                    over any non-positioned sibling and eats the clicks, which made text
+                    inside a modal unselectable (a click-to-select dismissed the dialog).
+                    Tailwind 3's `transform` used to create a stacking context here; in v4 the
+                    utility compiles to unset custom properties, so it computes to `none`.
+                -->
+                <div v-show="show" class="relative mb-6 bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:mx-auto" :class="maxWidthClass">
                     <slot v-if="showSlot"/>
                 </div>
             </transition>
