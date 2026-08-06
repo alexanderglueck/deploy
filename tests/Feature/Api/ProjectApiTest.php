@@ -193,4 +193,19 @@ class ProjectApiTest extends TestCase
         // canceled instead of deploying a stale commit afterwards.
         $this->assertSame(1, Deployment::whereNotNull('canceled_at')->count());
     }
+
+    #[Test]
+    public function deploy_url_uses_the_configured_app_url_not_the_request_host()
+    {
+        // This API is normally called in-network, so the request host is something
+        // like http://deploy. The returned URL is pasted straight into a git host's
+        // webhook config, so it has to be the public one.
+        config(['app.url' => 'https://deployer.example.com']);
+
+        $this->actingAsToken();
+
+        $this->postJson('/api/v1/projects', ['name' => 'x', 'repository' => 'jondoe/x'])
+            ->assertCreated()
+            ->assertJsonPath('data.deploy_url', fn ($url) => str_starts_with($url, 'https://deployer.example.com/api/deploy/'));
+    }
 }

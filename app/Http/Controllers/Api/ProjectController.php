@@ -137,7 +137,8 @@ class ProjectController extends Controller
                 'ulid' => $deployment->ulid,
                 'ref' => $deployment->ref,
                 'repository' => $deployment->repository,
-                'status_url' => url("/api/v1/deployments/{$deployment->ulid}"),
+                'status_url' => rtrim((string) config('app.url'), '/')
+                    ."/api/v1/deployments/{$deployment->ulid}",
             ],
         ], 202);
     }
@@ -180,8 +181,13 @@ class ProjectController extends Controller
             'repository' => $project->repository,
             'default_branch' => $project->default_branch,
             'deploy_endpoint' => $project->deploy_endpoint,
-            // The URL a git host's webhook should POST to.
-            'deploy_url' => url("/api/deploy/{$project->deploy_endpoint}"),
+            // The URL a git host's webhook should POST to. Built from the
+            // CONFIGURED app URL, not url()/the request host: this API is normally
+            // called in-network (the UI is behind Cloudflare Access), and url()
+            // would then hand back http://deploy/... -- unusable as a webhook
+            // target, in the one field a caller copies straight into CI.
+            'deploy_url' => rtrim((string) config('app.url'), '/')
+                ."/api/deploy/{$project->deploy_endpoint}",
             'created_at' => optional($project->created_at)->toIso8601String(),
         ];
     }
