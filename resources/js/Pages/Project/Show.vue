@@ -37,6 +37,11 @@ const settingsForm = useForm({
     name: props.project.name,
     repository: props.project.repository ?? '',
     default_branch: props.project.default_branch ?? '',
+    git_base: props.project.git_base ?? '',
+    git_token_user: props.project.git_token_user ?? '',
+    // Never populated from the server: blank means "keep the stored token".
+    git_token: '',
+    remove_git_token: false,
 });
 
 const saveSettings = () => {
@@ -294,6 +299,34 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                         Branch cloned by the Deploy button. Leave empty to use the repository's default branch.
                                     </p>
                                     <InputError :message="settingsForm.errors.default_branch" class="mt-2" />
+                                </div>
+                            </div>
+                            <div class="grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-3">
+                                <div>
+                                    <InputLabel for="settings-git-base" value="Git host" />
+                                    <TextInput id="settings-git-base" v-model="settingsForm.git_base" type="text" class="mt-1 block w-full" placeholder="installation default" />
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Set only when this repository is not on the default host, e.g.
+                                        <code>https://gitlab.com</code>.
+                                    </p>
+                                    <InputError :message="settingsForm.errors.git_base" class="mt-2" />
+                                </div>
+                                <div>
+                                    <InputLabel for="settings-git-token-user" value="Token username" />
+                                    <TextInput id="settings-git-token-user" v-model="settingsForm.git_token_user" type="text" class="mt-1 block w-full" placeholder="x-access-token" />
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        <code>oauth2</code> on GitLab, <code>x-access-token</code> on GitHub.
+                                    </p>
+                                    <InputError :message="settingsForm.errors.git_token_user" class="mt-2" />
+                                </div>
+                                <div>
+                                    <InputLabel for="settings-git-token" value="Access token" />
+                                    <TextInput id="settings-git-token" v-model="settingsForm.git_token" type="password" class="mt-1 block w-full" autocomplete="off" :placeholder="project.has_git_token ? 'stored — leave blank to keep' : 'none stored'" />
+                                    <label v-if="project.has_git_token" class="mt-2 flex items-center text-xs text-gray-500">
+                                        <input v-model="settingsForm.remove_git_token" type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                        <span class="ms-2">Remove the stored token</span>
+                                    </label>
+                                    <InputError :message="settingsForm.errors.git_token" class="mt-2" />
                                 </div>
                             </div>
                             <div class="flex items-center justify-between">

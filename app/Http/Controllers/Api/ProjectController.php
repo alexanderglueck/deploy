@@ -26,6 +26,21 @@ use Illuminate\Http\Request;
  */
 class ProjectController extends Controller
 {
+    /**
+     * Where this project's repository is cloned from, when it is not the
+     * installation's default host. Shared by create and update so a GitLab
+     * project can be registered in one call.
+     *
+     * `git_token` is write-only: it is stored encrypted and never returned,
+     * exactly like webhook_secret. Omitting it on update keeps the stored one;
+     * sending null clears it.
+     */
+    private const GIT_SOURCE_RULES = [
+        'git_base' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:#^https?://[\w.-]+(:\d+)?(/[\w.-]+)*$#'],
+        'git_token_user' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:/^[\w.@-]+$/'],
+        'git_token' => ['sometimes', 'nullable', 'string', 'max:255'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
         $projects = Project::query()
@@ -49,7 +64,7 @@ class ProjectController extends Controller
             // webhook from any repository (see Project::matchesRepository).
             'repository' => ['nullable', 'string', 'max:255', 'regex:#^[\w.-]+/[\w.-]+$#'],
             'default_branch' => ['nullable', 'string', 'max:255', 'regex:#^[\w./-]+$#'],
-        ]);
+        ] + self::GIT_SOURCE_RULES);
 
         $project = Project::create($validated + ['team_id' => $team->id]);
 
@@ -77,7 +92,7 @@ class ProjectController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'repository' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:#^[\w.-]+/[\w.-]+$#'],
             'default_branch' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:#^[\w./-]+$#'],
-        ]);
+        ] + self::GIT_SOURCE_RULES);
 
         $project->update($validated);
 
@@ -180,6 +195,11 @@ class ProjectController extends Controller
             'name' => $project->name,
             'repository' => $project->repository,
             'default_branch' => $project->default_branch,
+            // Null means the installation default (deploy.git_base).
+            'git_base' => $project->git_base,
+            'git_token_user' => $project->git_token_user,
+            // The token itself is never returned, only whether one is stored.
+            'has_git_token' => $project->has_git_token,
             'deploy_endpoint' => $project->deploy_endpoint,
             // The URL a git host's webhook should POST to. Built from the
             // CONFIGURED app URL, not url()/the request host: this API is normally

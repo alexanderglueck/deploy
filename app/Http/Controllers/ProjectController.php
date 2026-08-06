@@ -65,7 +65,20 @@ class ProjectController extends Controller
     {
         $this->ensureOwnedByCurrentTeam($request, $project->team_id);
 
-        $project->update($this->validateProject($request));
+        $validated = $this->validateProject($request);
+
+        // The token is never sent back to the form, so a blank field means
+        // "keep the stored one" -- otherwise every unrelated edit would wipe
+        // it. Removing one is deliberate, via the checkbox.
+        if (blank($validated['git_token'] ?? null)) {
+            unset($validated['git_token']);
+        }
+
+        if ($request->boolean('remove_git_token')) {
+            $validated['git_token'] = null;
+        }
+
+        $project->update($validated);
 
         return redirect()->route('project.show', $project);
     }
@@ -90,6 +103,11 @@ class ProjectController extends Controller
             'repository' => ['nullable', 'string', 'regex:#^[\w.-]+/[\w.-]+$#'],
             // Flows into generated clone commands, so the shape is strict.
             'default_branch' => ['nullable', 'string', 'regex:#^[\w./-]+$#'],
+            // Git host override; scheme and host only, no credentials in it
+            // (those are the two fields below) and no query or fragment.
+            'git_base' => ['nullable', 'string', 'max:255', 'regex:#^https?://[\w.-]+(:\d+)?(/[\w.-]+)*$#'],
+            'git_token_user' => ['nullable', 'string', 'max:255', 'regex:/^[\w.@-]+$/'],
+            'git_token' => ['nullable', 'string', 'max:255'],
         ]);
     }
 }

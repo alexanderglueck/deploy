@@ -10,6 +10,9 @@ const form = useForm({
     name: '',
     repository: '',
     default_branch: '',
+    git_base: '',
+    git_token_user: '',
+    git_token: '',
 });
 
 const submit = () => {
@@ -51,6 +54,42 @@ const submit = () => {
                                 Branch cloned when you deploy manually. Leave empty to use the repository's default branch.
                             </p>
                             <InputError :message="form.errors.default_branch" class="mt-2" />
+                        </div>
+
+                        <div class="border-t border-gray-200 pt-6">
+                            <h3 class="font-medium text-gray-900">Git source (optional)</h3>
+                            <p class="mt-1 text-sm text-gray-500">
+                                Only needed when this repository is not on the installation's default
+                                host. Docker deploy steps build the clone URL from the repository name,
+                                so a project hosted elsewhere cannot be cloned without this.
+                            </p>
+                        </div>
+
+                        <div>
+                            <InputLabel for="git_base" value="Git host" />
+                            <TextInput id="git_base" v-model="form.git_base" type="text" class="mt-1 block w-full" placeholder="https://gitlab.com" />
+                            <p class="mt-1 text-sm text-gray-500">
+                                Scheme and host only — no credentials, path or query.
+                            </p>
+                            <InputError :message="form.errors.git_base" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <InputLabel for="git_token_user" value="Token username" />
+                            <TextInput id="git_token_user" v-model="form.git_token_user" type="text" class="mt-1 block w-full" placeholder="x-access-token" />
+                            <p class="mt-1 text-sm text-gray-500">
+                                Host-specific: <code>oauth2</code> on GitLab, <code>x-access-token</code> on GitHub.
+                            </p>
+                            <InputError :message="form.errors.git_token_user" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <InputLabel for="git_token" value="Access token" />
+                            <TextInput id="git_token" v-model="form.git_token" type="password" class="mt-1 block w-full" autocomplete="off" />
+                            <p class="mt-1 text-sm text-gray-500">
+                                Needed for private repositories. Stored encrypted and never shown again.
+                            </p>
+                            <InputError :message="form.errors.git_token" class="mt-2" />
                         </div>
 
                         <div class="flex justify-end">

@@ -32,6 +32,14 @@ return [
     'git_token' => env('DEPLOY_GIT_TOKEN'),
 
     /*
+    | The username paired with the token in the clone URL. Host-specific:
+    | GitHub expects x-access-token, GitLab expects oauth2. A project hosted
+    | elsewhere can override all three of these on itself.
+    */
+
+    'git_token_user' => env('DEPLOY_GIT_TOKEN_USER', 'x-access-token'),
+
+    /*
     |--------------------------------------------------------------------------
     | Compose file convention
     |--------------------------------------------------------------------------

@@ -59,11 +59,7 @@ class DockerDeployScript
         $sha = $deployment->commit_sha;
         $target = $config['target'] ?? null;
 
-        $base = config('deploy.git_base');
-        $token = config('deploy.git_token');
-        $cloneUrl = $token
-            ? preg_replace('#^https://#', 'https://x-access-token:'.$token.'@', $base).'/'.$repository.'.git'
-            : $base.'/'.$repository.'.git';
+        $cloneUrl = self::cloneUrl($deployment);
 
         $targetFlag = $target ? '--target '.escapeshellarg($target).' ' : '';
         $shaTagApp = $sha ? ' -t '.escapeshellarg($app.':'.$sha) : '';
@@ -109,6 +105,44 @@ class DockerDeployScript
 
         echo "Deployed {$app}."
         BASH;
+    }
+
+    /**
+     * Where the sources are cloned from.
+     *
+     * The clone URL is always built server-side from the project's repository
+     * name, never from a webhook payload -- which also means the installation's
+     * git host is the only host reachable by default. A project may override it,
+     * because a repository living somewhere else than the rest of the fleet (a
+     * GitLab project on an otherwise GitHub-based install) is otherwise
+     * impossible to deploy.
+     *
+     * Credentials go in as userinfo, and the username is host-specific
+     * (x-access-token on GitHub, oauth2 on GitLab), so it is configurable
+     * alongside the token.
+     */
+    private static function cloneUrl(Deployment $deployment): string
+    {
+        $project = $deployment->project;
+
+        $base = rtrim($project?->git_base ?: (string) config('deploy.git_base'), '/');
+        $token = $project?->git_token ?: config('deploy.git_token');
+        $user = $project?->git_token_user ?: config('deploy.git_token_user');
+
+        $url = $base.'/'.$deployment->repository.'.git';
+
+        if (blank($token)) {
+            return $url;
+        }
+
+        // Percent-encoded so a token containing URL-significant characters
+        // cannot break out of the userinfo component.
+        return preg_replace(
+            '#^(https?://)#',
+            '$1'.rawurlencode((string) $user).':'.rawurlencode((string) $token).'@',
+            $url,
+            1
+        );
     }
 
     /**

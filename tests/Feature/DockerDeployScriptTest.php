@@ -59,6 +59,54 @@ class DockerDeployScriptTest extends TestCase
     }
 
     #[Test]
+    public function a_project_can_clone_from_its_own_git_host()
+    {
+        // The installation is GitHub; this one project lives on GitLab, which
+        // needs a different host AND a different token username (oauth2).
+        config(['deploy.git_token' => 'installation-token']);
+
+        $deployment = $this->deployment(['repository' => 'gdev-projects/notes']);
+        $deployment->project->update([
+            'git_base' => 'https://gitlab.com',
+            'git_token_user' => 'oauth2',
+            'git_token' => 'project-token',
+        ]);
+
+        $script = DockerDeployScript::generate($deployment->fresh(), []);
+
+        $this->assertStringContainsString(
+            'https://oauth2:project-token@gitlab.com/gdev-projects/notes.git',
+            $script
+        );
+        // The fleet-wide token must not leak into another host's clone URL.
+        $this->assertStringNotContainsString('installation-token', $script);
+        $this->assertStringNotContainsString('github.com', $script);
+    }
+
+    #[Test]
+    public function a_project_without_overrides_uses_the_installation_default()
+    {
+        config(['deploy.git_token' => 'token123']);
+
+        $script = DockerDeployScript::generate($this->deployment(), []);
+
+        $this->assertStringContainsString('https://x-access-token:token123@github.com/jondoe/my.app.git', $script);
+    }
+
+    #[Test]
+    public function a_token_with_url_significant_characters_stays_inside_the_userinfo()
+    {
+        $deployment = $this->deployment();
+        $deployment->project->update(['git_token' => 'pass@word/with:stuff']);
+
+        $script = DockerDeployScript::generate($deployment->fresh(), []);
+
+        // Percent-encoded, so the '@' cannot terminate the userinfo early and
+        // redirect the clone at an attacker-chosen host.
+        $this->assertStringContainsString('pass%40word%2Fwith%3Astuff@github.com/', $script);
+    }
+
+    #[Test]
     public function config_overrides_beat_conventions()
     {
         $script = DockerDeployScript::generate($this->deployment(), [

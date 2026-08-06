@@ -123,6 +123,63 @@ class ProjectApiTest extends TestCase
     }
 
     #[Test]
+    public function it_registers_a_project_hosted_on_another_git_host()
+    {
+        $this->actingAsToken();
+
+        // The one-call registration a GitLab-hosted project needs: without the
+        // host it would be cloned from the installation default and fail.
+        $response = $this->postJson('/api/v1/projects', [
+            'name' => 'notes',
+            'repository' => 'gdev-projects/notes',
+            'git_base' => 'https://gitlab.com',
+            'git_token_user' => 'oauth2',
+            'git_token' => 'glpat-secret',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.git_base', 'https://gitlab.com')
+            ->assertJsonPath('data.git_token_user', 'oauth2')
+            ->assertJsonPath('data.has_git_token', true);
+
+        // Write-only, exactly like webhook_secret.
+        $this->assertArrayNotHasKey('git_token', $response->json('data'));
+        $this->assertStringNotContainsString('glpat-secret', $response->getContent());
+
+        $project = Project::query()->where('ulid', $response->json('data.ulid'))->sole();
+        $this->assertSame('glpat-secret', $project->git_token);
+    }
+
+    #[Test]
+    public function omitting_the_git_token_keeps_it_and_null_clears_it()
+    {
+        $user = $this->actingAsToken();
+        $project = $this->projectWithWorkflow($user, ['git_token' => 'glpat-secret']);
+
+        // A patch about something else must not disarm the clone credentials.
+        $this->patchJson("/api/v1/projects/{$project->ulid}", ['default_branch' => 'main'])
+            ->assertOk()
+            ->assertJsonPath('data.has_git_token', true);
+        $this->assertSame('glpat-secret', $project->fresh()->git_token);
+
+        $this->patchJson("/api/v1/projects/{$project->ulid}", ['git_token' => null])
+            ->assertOk()
+            ->assertJsonPath('data.has_git_token', false);
+        $this->assertNull($project->fresh()->git_token);
+    }
+
+    #[Test]
+    public function it_rejects_a_git_host_that_is_more_than_a_host()
+    {
+        $this->actingAsToken();
+
+        foreach (['https://user:pw@gitlab.com', 'gitlab.com', 'https://gitlab.com/;id', 'file:///etc'] as $base) {
+            $this->postJson('/api/v1/projects', ['name' => 'x', 'git_base' => $base])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('git_base');
+        }
+    }
+
+    #[Test]
     public function it_triggers_a_deployment_on_the_default_branch()
     {
         ExecutorFactory::fake();
