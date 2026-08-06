@@ -31,7 +31,17 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
     Route::get('/projects/{project}/workflows', [ApiWorkflowController::class, 'index']);
     Route::post('/projects/{project}/workflows', [ApiWorkflowController::class, 'store']);
+    Route::get('/projects/{project}/workflows/{workflow}', [ApiWorkflowController::class, 'show']);
+    Route::patch('/projects/{project}/workflows/{workflow}', [ApiWorkflowController::class, 'update']);
     Route::delete('/projects/{project}/workflows/{workflow}', [ApiWorkflowController::class, 'destroy']);
+
+    // Steps are what a deployment actually runs; a workflow without them fails
+    // on every trigger. PUT replaces the list (the editor's own semantics),
+    // POST appends to it.
+    Route::get('/projects/{project}/workflows/{workflow}/steps', [ApiWorkflowController::class, 'steps']);
+    Route::put('/projects/{project}/workflows/{workflow}/steps', [ApiWorkflowController::class, 'replaceSteps']);
+    Route::post('/projects/{project}/workflows/{workflow}/steps', [ApiWorkflowController::class, 'addSteps']);
+    Route::delete('/projects/{project}/workflows/{workflow}/steps/{step}', [ApiWorkflowController::class, 'destroyStep']);
 
     Route::get('/deployments/{deployment}', [ApiDeploymentStatusController::class, 'show']);
 });
