@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DeploymentController as ApiDeploymentStatusController;
 use App\Http\Controllers\Api\ProjectController as ApiProjectController;
+use App\Http\Controllers\Api\WorkflowController as ApiWorkflowController;
 use App\Http\Controllers\ApiDeploymentController;
 use App\Http\Middleware\VerifyWebhookSignature;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,10 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('/projects/{project}', [ApiProjectController::class, 'show']);
     Route::patch('/projects/{project}', [ApiProjectController::class, 'update']);
     Route::post('/projects/{project}/deploy', [ApiProjectController::class, 'deploy']);
+
+    Route::get('/projects/{project}/workflows', [ApiWorkflowController::class, 'index']);
+    Route::post('/projects/{project}/workflows', [ApiWorkflowController::class, 'store']);
+    Route::delete('/projects/{project}/workflows/{workflow}', [ApiWorkflowController::class, 'destroy']);
 
     Route::get('/deployments/{deployment}', [ApiDeploymentStatusController::class, 'show']);
 });
