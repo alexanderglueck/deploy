@@ -38,6 +38,9 @@ record of every deployment.
   unpause/kill with a per-server audit trail of who ran what, and log tailing
   with time-window, tail-length and timestamp filters. Works on the local host
   and remote SSH servers through the same mechanism.
+- **Management API** — the project screens as a scriptable `/api/v1`: register
+  projects, give them workflows and steps, trigger deploys and poll their
+  status with a token instead of a browser.
 - **Queue-based** — deployments run on a worker with a per-project lock;
   superseded pending deployments are auto-canceled.
 - **Housekeeping** — optional failure notifications (`DEPLOY_NOTIFY_URL` gets a
@@ -104,6 +107,7 @@ DB_DATABASE=/data/deploy.sqlite
 QUEUE_CONNECTION=database
 AUTO_MIGRATE=1      # migrate on container start (updates = pull + restart)
 DEPLOY_GIT_TOKEN=   # token for cloning private repos (contents:read)
+# DEPLOY_GIT_TOKEN_USER=x-access-token   # oauth2 on GitLab
 DEPLOY_NOTIFY_URL=  # optional: JSON POST here when a deployment fails
 
 # Realtime dashboard updates (reverb service above); use BROADCAST_CONNECTION=null
@@ -149,6 +153,89 @@ unusable.
 > Access) — anyone who reaches it can control every container on the box.
 > Deployed apps run in their own containers.
 
+## Management API
+
+Everything the project screens do, scriptable — so a fleet of projects can be
+registered from a terminal instead of clicked through a browser. Authenticate
+with a token from the UI's **API Tokens** screen:
+
+```bash
+curl -sS https://deploy.example.com/api/v1/projects \
+    -H "Authorization: Bearer $DEPLOY_TOKEN" -H 'Accept: application/json'
+```
+
+Everything is scoped to the token owner's teams, records are addressed by their
+public ULID, and anything belonging to another team answers `404` rather than
+`403`, so a token cannot probe for identifiers it should not see. Servers are
+not managed here — create them in the UI and pass their ULID. If the UI sits
+behind an access proxy that rejects bearer tokens, call the API from inside the
+network instead (`http://deploy/api/v1/...`).
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/projects` | |
+| `POST` | `/api/v1/projects` | returns `webhook_secret` **once** |
+| `GET` `PATCH` | `/api/v1/projects/{project}` | |
+| `POST` | `/api/v1/projects/{project}/deploy` | `{ref?, sha?}` → `202` and a `status_url` |
+| `GET` | `/api/v1/projects/{project}/workflows` | steps included |
+| `POST` | `/api/v1/projects/{project}/workflows` | `server` and `steps` required |
+| `GET` `PATCH` `DELETE` | `/api/v1/projects/{project}/workflows/{workflow}` | |
+| `GET` | `…/workflows/{workflow}/steps` | |
+| `PUT` | `…/workflows/{workflow}/steps` | replaces the whole list |
+| `POST` | `…/workflows/{workflow}/steps` | appends to it |
+| `DELETE` | `…/workflows/{workflow}/steps/{step}` | |
+| `GET` | `/api/v1/deployments/{deployment}` | `pending`, `deployed`, `failed` or `canceled` |
+
+### From nothing to a deployed app
+
+```bash
+API=https://deploy.example.com/api/v1
+AUTH="Authorization: Bearer $DEPLOY_TOKEN"
+JSON='Content-Type: application/json'
+
+# 1. Register it. webhook_secret comes back exactly once: together with
+#    deploy_url it is what CI needs to trigger a deployment.
+curl -sS -X POST "$API/projects" -H "$AUTH" -H "$JSON" \
+    -d '{"name":"contacts","repository":"jondoe/contacts","default_branch":"master"}'
+
+# 2. Give it a workflow -- PROJECT is the ulid from step 1, SERVER a server's
+#    ulid from the UI. Without a workflow every push is accepted and ignored;
+#    without steps it is accepted and then fails.
+curl -sS -X POST "$API/projects/$PROJECT/workflows" -H "$AUTH" -H "$JSON" \
+    -d '{"server":"'"$SERVER"'","steps":[{"type":"docker_deploy"}]}'
+
+# 3. Deploy without waiting for a push, then poll the returned status_url
+#    until it reports deployed or failed.
+curl -sS -X POST "$API/projects/$PROJECT/deploy" -H "$AUTH" -H 'Accept: application/json'
+```
+
+### Steps
+
+Steps are the only thing a deployment actually runs, so `steps` is required
+when creating a workflow. Each is `{"type": …, "config": {…}}`; config keys the
+type does not use are dropped rather than stored.
+
+| Type | Config |
+|---|---|
+| `docker_deploy` | `app`, `compose_file`, `target` — all optional, the conventions below fill them in |
+| `inline_script` | `script` (required) |
+| `script_file` | `path` (required), `args` |
+
+`PUT …/steps` replaces the list and renumbers from 1, which is also what the
+editor's save does; `POST …/steps` appends.
+
+### Branch filtering and other fields
+
+`branch` has three meanings: omitted or `null` deploys the repository's default
+branch, `"*"` matches any branch, and anything else is an exact branch name —
+responses spell the choice out as `branch_mode`. `event` is `push` on input,
+while responses carry the stored integer constant.
+
+A project whose repository is not on `DEPLOY_GIT_BASE` carries its own
+`git_base`, `git_token_user` and `git_token`. The token is write-only: it is
+stored encrypted, never returned, kept when a `PATCH` omits it, and cleared by
+sending `null`. Responses report `has_git_token` instead.
+
 ## Development
 
 ```sh
@@ -170,7 +257,7 @@ instead. The production image has the CLI baked in.
 | Build file | `deploy/build.sh` → `Dockerfile.dist` → `Dockerfile` | — |
 | Build target | none | step config `target` |
 | Compose file | `DEPLOY_COMPOSE_FILE` pattern (`{app}` placeholder) | step config `compose_file` |
-| Clone URL | `DEPLOY_GIT_BASE` + repository + `DEPLOY_GIT_TOKEN` | — |
+| Clone URL | `DEPLOY_GIT_BASE` + repository + `DEPLOY_GIT_TOKEN`/`DEPLOY_GIT_TOKEN_USER` | project `git_base`, `git_token`, `git_token_user` |
 
 ## License
 
