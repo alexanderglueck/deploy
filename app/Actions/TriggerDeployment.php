@@ -20,8 +20,8 @@ class TriggerDeployment
 {
     /**
      * @param  array<string, mixed>  $data  as built by the callers' deployment
-     *                                     data helpers (project_id, event, ref,
-     *                                     repository, ...)
+     *                                      data helpers (project_id, event, ref,
+     *                                      repository, ...)
      */
     public function __invoke(array $data): Deployment
     {
