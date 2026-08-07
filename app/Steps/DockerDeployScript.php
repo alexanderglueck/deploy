@@ -62,6 +62,7 @@ class DockerDeployScript
         $cloneUrl = self::cloneUrl($deployment);
 
         $targetFlag = $target ? '--target '.escapeshellarg($target).' ' : '';
+        $buildArgs = self::buildArgs($deployment);
         $shaTagApp = $sha ? ' -t '.escapeshellarg($app.':'.$sha) : '';
         $shaTagWeb = $sha ? ' -t '.escapeshellarg($app.'-web:'.$sha) : '';
 
@@ -86,9 +87,9 @@ class DockerDeployScript
         if [ -x deploy/build.sh ]; then
             ./deploy/build.sh {$appQ}
         elif [ -f Dockerfile.dist ]; then
-            docker build {$targetFlag}-f Dockerfile.dist -t {$appQ}:latest{$shaTagApp} .
+            docker build {$targetFlag}{$buildArgs}-f Dockerfile.dist -t {$appQ}:latest{$shaTagApp} .
         elif [ -f Dockerfile ]; then
-            docker build {$targetFlag}-t {$appQ}:latest{$shaTagApp} .
+            docker build {$targetFlag}{$buildArgs}-t {$appQ}:latest{$shaTagApp} .
         else
             echo "No deploy/build.sh, Dockerfile.dist or Dockerfile found in {$repository}." >&2
             exit 1
@@ -96,7 +97,7 @@ class DockerDeployScript
 
         if [ -f docker/nginx.Dockerfile ]; then
             echo "Building web image {$app}-web..."
-            docker build -f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .
+            docker build {$buildArgs}-f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .
         fi
 
         COMPOSE_FILE={$composeFileQ}
@@ -105,6 +106,30 @@ class DockerDeployScript
 
         echo "Deployed {$app}."
         BASH;
+    }
+
+    /**
+     * `--build-arg` flags for the project variables that opt into them.
+     *
+     * Needed because a Vite build runs *inside* `docker build` and inlines
+     * VITE_* at build time, so an exported shell variable never reaches it.
+     *
+     * Opt-in per variable on purpose: build args are recorded in the image's
+     * `docker history`, which is acceptable for values that ship in the client
+     * bundle anyway and quite wrong for a token. The values are referenced as
+     * shell variables rather than substituted here, so they are not written
+     * into the script itself -- the exports at the top of the step provide them.
+     */
+    private static function buildArgs(Deployment $deployment): string
+    {
+        $variables = $deployment->project?->variables ?? collect();
+
+        $flags = $variables
+            ->filter(fn ($variable) => $variable->build_arg)
+            ->map(fn ($variable) => '--build-arg '.escapeshellarg($variable->key.'=').'"$'.$variable->key.'" ')
+            ->implode('');
+
+        return $flags;
     }
 
     /**

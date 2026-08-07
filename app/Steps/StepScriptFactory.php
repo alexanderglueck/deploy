@@ -16,13 +16,39 @@ class StepScriptFactory
     {
         $config = $step->config ?? [];
 
-        return match ($step->type) {
+        $script = match ($step->type) {
             StepType::INLINE_SCRIPT => self::inlineScript($config),
             StepType::SCRIPT_FILE => self::scriptFile($config),
             StepType::DOCKER_DEPLOY => DockerDeployScript::generate($step->deployment, $config),
             StepType::DOCKER_ROLLBACK => DockerRollbackScript::generate($step->deployment, $config),
             default => throw new InvalidArgumentException("Unknown step type [{$step->type}]."),
         };
+
+        return self::withProjectVariables($step, $script);
+    }
+
+    /**
+     * Prefix the project's variables as exports, so every step type sees them:
+     * a script step, the app's own deploy/build.sh, and `docker compose up`
+     * (which interpolates them into the compose file) alike.
+     *
+     * Resolved at run time rather than snapshotted onto the deployment: a
+     * variable is configuration of the project, and a retry of an old
+     * deployment should use today's value, not a stale copy of a rotated one.
+     */
+    private static function withProjectVariables(DeploymentStep $step, string $script): string
+    {
+        $variables = $step->deployment?->project?->variables ?? collect();
+
+        if ($variables->isEmpty()) {
+            return $script;
+        }
+
+        $exports = $variables
+            ->map(fn ($variable) => 'export '.$variable->key.'='.escapeshellarg((string) $variable->value))
+            ->implode("\n");
+
+        return $exports."\n\n".$script;
     }
 
     /**

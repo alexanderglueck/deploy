@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DeploymentController as ApiDeploymentStatusController;
 use App\Http\Controllers\Api\ProjectController as ApiProjectController;
+use App\Http\Controllers\Api\ProjectVariableController as ApiProjectVariableController;
 use App\Http\Controllers\Api\WorkflowController as ApiWorkflowController;
 use App\Http\Controllers\ApiDeploymentController;
 use App\Http\Middleware\VerifyWebhookSignature;
@@ -28,6 +29,13 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::get('/projects/{project}', [ApiProjectController::class, 'show']);
     Route::patch('/projects/{project}', [ApiProjectController::class, 'update']);
     Route::post('/projects/{project}/deploy', [ApiProjectController::class, 'deploy']);
+
+    // Project environment variables: exported into every step of every
+    // deployment, and passed to `docker build` for the ones flagged build_arg
+    // (the only way VITE_* can reach an asset build inside the image).
+    Route::get('/projects/{project}/variables', [ApiProjectVariableController::class, 'index']);
+    Route::put('/projects/{project}/variables', [ApiProjectVariableController::class, 'replace']);
+    Route::delete('/projects/{project}/variables/{variable}', [ApiProjectVariableController::class, 'destroy']);
 
     Route::get('/projects/{project}/workflows', [ApiWorkflowController::class, 'index']);
     Route::post('/projects/{project}/workflows', [ApiWorkflowController::class, 'store']);

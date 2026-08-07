@@ -14,8 +14,35 @@ import TextInput from '@/Components/TextInput.vue';
 const props = defineProps({
     project: Object,
     webhookSecret: String,
+    variables: Array,
     workflows: Array,
     deployments: Array,
+});
+
+// Values are never sent to the browser, so every row starts blank and a blank
+// row means "keep the stored value" on save.
+const variablesForm = useForm({
+    variables: (props.variables ?? []).map((variable) => ({
+        key: variable.key,
+        value: '',
+        has_value: variable.has_value,
+        build_arg: variable.build_arg,
+        masked: variable.masked,
+    })),
+});
+
+const addVariable = () => variablesForm.variables.push({
+    key: '', value: '', has_value: false, build_arg: false, masked: true,
+});
+
+const removeVariable = (index) => variablesForm.variables.splice(index, 1);
+
+const saveVariables = () => variablesForm.put(route('project.variables', props.project), {
+    preserveScroll: true,
+    onSuccess: () => variablesForm.variables.forEach((variable) => {
+        variable.has_value = variable.has_value || variable.value !== '';
+        variable.value = '';
+    }),
 });
 
 const deployUrl = route('api.deployment.store', props.project.deploy_endpoint);
@@ -337,6 +364,64 @@ const fmt = (value) => (value ? new Date(value).toLocaleString() : '—');
                                     Save
                                 </PrimaryButton>
                             </div>
+                        </form>
+                    </details>
+                </div>
+
+                <!-- Variables -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <details>
+                        <summary class="cursor-pointer px-4 py-3 font-medium text-gray-700">
+                            Variables
+                            <span class="ms-1 text-xs font-normal text-gray-500">({{ variablesForm.variables.length }})</span>
+                        </summary>
+                        <form class="space-y-3 border-t border-gray-100 p-4" @submit.prevent="saveVariables">
+                            <p class="text-xs text-gray-500">
+                                Exported into every step of every deployment of this project — script steps,
+                                the app's own <code>deploy/build.sh</code>, and <code>docker compose up</code>.
+                                Values are write-only: leave the field blank to keep the stored one.
+                            </p>
+
+                            <div
+                                v-for="(variable, index) in variablesForm.variables"
+                                :key="index"
+                                class="grid items-center gap-2 sm:grid-cols-12"
+                            >
+                                <TextInput v-model="variable.key" type="text" class="sm:col-span-3" placeholder="VITE_APP_NAME" />
+                                <TextInput
+                                    v-model="variable.value"
+                                    type="password"
+                                    autocomplete="off"
+                                    class="sm:col-span-4"
+                                    :placeholder="variable.has_value ? 'stored — blank keeps it' : 'value'"
+                                />
+                                <label class="flex items-center text-xs text-gray-600 sm:col-span-2">
+                                    <input v-model="variable.build_arg" type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                    <span class="ms-2">build arg</span>
+                                </label>
+                                <label class="flex items-center text-xs text-gray-600 sm:col-span-2">
+                                    <input v-model="variable.masked" type="checkbox" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                    <span class="ms-2">masked</span>
+                                </label>
+                                <button type="button" class="text-start text-xs text-red-600 hover:underline sm:col-span-1" @click="removeVariable(index)">
+                                    Remove
+                                </button>
+                                <InputError :message="variablesForm.errors[`variables.${index}.key`]" class="sm:col-span-12" />
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <SecondaryButton type="button" @click="addVariable">Add variable</SecondaryButton>
+                                <PrimaryButton :class="{ 'opacity-25': variablesForm.processing }" :disabled="variablesForm.processing">
+                                    Save variables
+                                </PrimaryButton>
+                            </div>
+
+                            <p class="text-xs text-gray-500">
+                                <strong>build arg</strong> additionally passes the value to <code>docker build</code>, which is
+                                the only way <code>VITE_*</code> reaches an asset build (Vite inlines those at build time) —
+                                but build args are recorded in the image's <code>docker history</code>, so never flag a secret.
+                                <strong>masked</strong> replaces the value with <code>[masked]</code> in stored deployment output.
+                            </p>
                         </form>
                     </details>
                 </div>

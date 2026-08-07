@@ -41,6 +41,10 @@ record of every deployment.
 - **Management API** — the project screens as a scriptable `/api/v1`: register
   projects, give them workflows and steps, trigger deploys and poll their
   status with a token instead of a browser.
+- **Project variables** — GitLab-style environment variables per project,
+  exported into every step (and into `docker build` for the ones that need to
+  reach a Vite build). Stored encrypted, never returned by the API, and masked
+  out of deployment output.
 - **Queue-based** — deployments run on a worker with a per-project lock;
   superseded pending deployments are auto-canceled.
 - **Housekeeping** — optional failure notifications (`DEPLOY_NOTIFY_URL` gets a
@@ -177,6 +181,8 @@ network instead (`http://deploy/api/v1/...`).
 | `POST` | `/api/v1/projects` | returns `webhook_secret` **once** |
 | `GET` `PATCH` | `/api/v1/projects/{project}` | |
 | `POST` | `/api/v1/projects/{project}/deploy` | `{ref?, sha?}` → `202` and a `status_url` |
+| `GET` `PUT` | `/api/v1/projects/{project}/variables` | environment variables; values are write-only |
+| `DELETE` | `/api/v1/projects/{project}/variables/{variable}` | |
 | `GET` | `/api/v1/projects/{project}/workflows` | steps included |
 | `POST` | `/api/v1/projects/{project}/workflows` | `server` and `steps` required |
 | `GET` `PATCH` `DELETE` | `/api/v1/projects/{project}/workflows/{workflow}` | |
@@ -223,6 +229,38 @@ type does not use are dropped rather than stored.
 
 `PUT …/steps` replaces the list and renumbers from 1, which is also what the
 editor's save does; `POST …/steps` appends.
+
+### Variables
+
+Environment variables defined on a project, in the spirit of GitLab's CI/CD
+variables: exported into **every step of every deployment** it runs — script
+steps, the app's own `deploy/build.sh`, and `docker compose up`, which
+interpolates them into the compose file.
+
+```bash
+curl -sS -X PUT "$API/projects/$PROJECT/variables" -H "$AUTH" -H "$JSON" -d '{
+  "variables": [
+    {"key": "VITE_PUSHER_APP_KEY", "value": "pk_live_abc", "build_arg": true, "masked": false},
+    {"key": "DB_PASSWORD",         "value": "hunter2"}
+  ]
+}'
+```
+
+Values are **write-only**: responses carry the key, `has_value` and the flags,
+never the value. Submitting a variable with a blank value therefore keeps the
+stored one, which is how a flag can be flipped without resending the secret. PUT
+replaces the whole list, so anything absent is deleted.
+
+| Flag | Meaning |
+|---|---|
+| `build_arg` | also passed to `docker build` as `--build-arg`. Required for `VITE_*`, because Vite inlines those *during* the image build and never sees an exported shell variable. Opt-in, because build args are recorded in the image's `docker history` — right for values that ship in the client bundle, wrong for a token. |
+| `masked` (default) | the value is replaced with `[masked]` in stored deployment output and in failure notifications. Values shorter than 5 characters are not masked, as that would shred unrelated output. |
+
+Two things worth knowing: a repository with its own `deploy/build.sh` controls
+its `docker build` invocation, so the manager cannot add `--build-arg` there —
+have the script forward what it needs (the variables are exported, so
+`--build-arg VITE_X="$VITE_X"` works). And variables are read at deploy time,
+not snapshotted, so retrying an old deployment uses today's values.
 
 ### Branch filtering and other fields
 

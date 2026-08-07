@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\SyncProjectVariables;
 use App\Jobs\ReconcileImageAvailability;
 use App\Models\Deployment;
 use App\Models\Project;
@@ -28,6 +29,15 @@ class ProjectController extends Controller
             'project' => $project,
             // The secret is hidden from serialization; the setup card needs it.
             'webhookSecret' => $project->webhook_secret,
+            // Keys and flags only -- values are write-only, so the editor shows
+            // "stored" and sends a value back only when it is being changed.
+            'variables' => $project->variables->map(fn ($variable) => [
+                'ulid' => $variable->ulid,
+                'key' => $variable->key,
+                'has_value' => filled($variable->value),
+                'build_arg' => $variable->build_arg,
+                'masked' => $variable->masked,
+            ])->values(),
             'workflows' => $project->workflows()->with(['server', 'steps'])->get(),
             // Bounded so the 3s polling payload stays small. Output is only
             // shipped inline for active deployments (their logs are live);
@@ -79,6 +89,34 @@ class ProjectController extends Controller
         }
 
         $project->update($validated);
+
+        return redirect()->route('project.show', $project);
+    }
+
+    /**
+     * Replace the project's environment variables.
+     *
+     * Separate from update() because the settings form never holds the values:
+     * a row submitted with a blank value keeps the stored one, so merging this
+     * into the general update would make "save settings" ambiguous.
+     */
+    public function variables(Request $request, Project $project, SyncProjectVariables $sync): RedirectResponse
+    {
+        $this->ensureOwnedByCurrentTeam($request, $project->team_id);
+
+        $validated = $request->validate([
+            'variables' => ['present', 'array'],
+            // Exported verbatim into a shell, so keys must be identifiers.
+            'variables.*.key' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
+            'variables.*.value' => ['sometimes', 'nullable', 'string', 'max:8192'],
+            'variables.*.build_arg' => ['sometimes', 'boolean'],
+            'variables.*.masked' => ['sometimes', 'boolean'],
+        ]);
+
+        $keys = array_column($validated['variables'], 'key');
+        abort_if(count($keys) !== count(array_unique($keys)), 422, 'Duplicate variable keys.');
+
+        $sync($project, $validated['variables']);
 
         return redirect()->route('project.show', $project);
     }

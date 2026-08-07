@@ -11,6 +11,7 @@ use App\Models\Workflow;
 use App\Models\WorkflowStep;
 use App\Steps\DockerDeployScript;
 use App\Steps\StepScriptFactory;
+use App\Support\SecretMasker;
 use App\Support\StepType;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -179,6 +180,10 @@ class ProcessDeployments implements ShouldQueue
 
         $executor = app(ExecutorFactory::class)->for($server);
 
+        // Output is kept for months and rendered in the UI, so a variable a
+        // build script echoes must not be readable there afterwards.
+        $masker = SecretMasker::for($project->variables);
+
         foreach ($deploymentSteps as $index => $step) {
             // A cancellation between steps stops the deployment.
             if ($this->deployment->fresh()->isCanceled()) {
@@ -195,9 +200,9 @@ class ProcessDeployments implements ShouldQueue
             try {
                 $script = StepScriptFactory::scriptFor($step);
 
-                $result = $executor->run($script, fn (string $chunk) => $step->appendOutput($chunk));
+                $result = $executor->run($script, fn (string $chunk) => $step->appendOutput($masker->mask($chunk)));
             } catch (Throwable $e) {
-                $step->appendOutput('ERROR: '.$e->getMessage()."\n");
+                $step->appendOutput($masker->mask('ERROR: '.$e->getMessage()."\n"));
                 $step->update([
                     'status' => DeploymentStep::STATUS_FAILED,
                     'finished_at' => Carbon::now(),
@@ -257,6 +262,11 @@ class ProcessDeployments implements ShouldQueue
 
     private function markFailed(string $message): void
     {
+        // A failure message can quote the command that failed, so it gets the
+        // same masking as step output -- including on its way to the
+        // notification webhook, which leaves the server entirely.
+        $message = SecretMasker::for($this->deployment->project?->variables ?? collect())->mask($message);
+
         $this->deployment->appendLog(rtrim($message)."\n");
 
         $this->deployment->update([

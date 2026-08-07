@@ -63,6 +63,7 @@ Route::middleware([
     Route::post('/projects', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('project.show');
     Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('project.update');
+    Route::put('/projects/{project}/variables', [ProjectController::class, 'variables'])->name('project.variables');
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::post('/projects/{project}/webhook-secret', [ProjectWebhookSecretController::class, 'store'])->name('project.webhook-secret.store');
 

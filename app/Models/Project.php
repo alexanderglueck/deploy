@@ -100,6 +100,16 @@ class Project extends Model
         return $this->hasMany(Workflow::class);
     }
 
+    /**
+     * Environment variables forwarded into every deployment of this project.
+     *
+     * @return HasMany
+     */
+    public function variables()
+    {
+        return $this->hasMany(ProjectVariable::class)->orderBy('key');
+    }
+
     protected static function booted()
     {
         static::creating(function (Project $project) {
