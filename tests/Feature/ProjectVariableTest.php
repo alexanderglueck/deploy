@@ -9,6 +9,8 @@ use App\Steps\StepScriptFactory;
 use App\Support\SecretMasker;
 use App\Support\StepType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -117,6 +119,23 @@ class ProjectVariableTest extends TestCase
         $this->assertSame('at https://example.com', $masker->mask('at https://example.com'));
         // Too short to mask without shredding unrelated output.
         $this->assertSame('ab cab', $masker->mask('ab cab'));
+    }
+
+    #[Test]
+    public function values_are_encrypted_at_rest_with_the_app_key()
+    {
+        $project = Project::factory()->create();
+        $project->variables()->create(['key' => 'SECRET', 'value' => 'plaintext-value']);
+
+        $raw = DB::table('project_variables')->where('key', 'SECRET')->value('value');
+
+        // Nothing readable in the column...
+        $this->assertStringNotContainsString('plaintext-value', $raw);
+        // ...and it is Laravel's encrypter, i.e. tied to APP_KEY, not some
+        // home-grown obfuscation.
+        $this->assertSame('plaintext-value', Crypt::decryptString($raw));
+        // The model still hands back the plaintext.
+        $this->assertSame('plaintext-value', $project->variables()->sole()->value);
     }
 
     #[Test]
