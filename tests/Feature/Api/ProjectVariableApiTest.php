@@ -104,6 +104,18 @@ class ProjectVariableApiTest extends TestCase
     }
 
     #[Test]
+    public function it_rejects_names_that_would_hijack_the_deployment()
+    {
+        foreach (['PATH', 'LD_PRELOAD', 'DOCKER_HOST', 'BASH_ENV', 'docker_host'] as $key) {
+            $this->putJson($this->url(), ['variables' => [['key' => $key, 'value' => 'x']]])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('variables.0.key');
+        }
+
+        $this->assertSame(0, $this->project->variables()->count());
+    }
+
+    #[Test]
     public function it_rejects_duplicate_keys()
     {
         $this->putJson($this->url(), ['variables' => [

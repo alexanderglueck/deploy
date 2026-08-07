@@ -3,6 +3,7 @@
 namespace App\Steps;
 
 use App\Models\DeploymentStep;
+use App\Models\ProjectVariable;
 use App\Support\StepType;
 use InvalidArgumentException;
 
@@ -44,9 +45,20 @@ class StepScriptFactory
             return $script;
         }
 
+        // Re-checked here, not just in the controllers: the key is written into
+        // the script unquoted, so this is the boundary that decides what a
+        // deployment executes. A row that reached the table some other way (an
+        // import, a console command, a future endpoint) must not be able to
+        // smuggle `KEY=x; curl … | sh` into a root-equivalent shell, or replace
+        // PATH out from under every command in the step.
         $exports = $variables
+            ->filter(fn ($variable) => ProjectVariable::keyIsAllowed((string) $variable->key))
             ->map(fn ($variable) => 'export '.$variable->key.'='.escapeshellarg((string) $variable->value))
             ->implode("\n");
+
+        if ($exports === '') {
+            return $script;
+        }
 
         return $exports."\n\n".$script;
     }

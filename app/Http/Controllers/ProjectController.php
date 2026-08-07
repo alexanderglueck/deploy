@@ -6,6 +6,7 @@ use App\Actions\SyncProjectVariables;
 use App\Jobs\ReconcileImageAvailability;
 use App\Models\Deployment;
 use App\Models\Project;
+use App\Models\ProjectVariable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -107,7 +108,15 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'variables' => ['present', 'array'],
             // Exported verbatim into a shell, so keys must be identifiers.
-            'variables.*.key' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
+            'variables.*.key' => [
+                'required', 'string', 'max:255',
+                // One implementation for both layers: the script generator
+                // enforces exactly this, so validation cannot accept a key that
+                // would later be silently dropped.
+                fn (string $attribute, mixed $value, callable $fail) => ProjectVariable::keyIsAllowed((string) $value)
+                    ? null
+                    : $fail('Each variable key must be a shell identifier and must not be a reserved name.'),
+            ],
             'variables.*.value' => ['sometimes', 'nullable', 'string', 'max:8192'],
             'variables.*.build_arg' => ['sometimes', 'boolean'],
             'variables.*.masked' => ['sometimes', 'boolean'],

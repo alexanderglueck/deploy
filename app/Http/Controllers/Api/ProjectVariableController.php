@@ -23,15 +23,29 @@ use Illuminate\Http\Request;
 class ProjectVariableController extends Controller
 {
     /**
-     * Keys are shell identifiers because they are exported verbatim.
+     * Keys are shell identifiers because they are exported verbatim, and a
+     * handful of names are refused outright -- see ProjectVariable.
+     *
+     * @return array<string, mixed>
      */
-    private const RULES = [
-        'variables' => ['present', 'array'],
-        'variables.*.key' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
-        'variables.*.value' => ['sometimes', 'nullable', 'string', 'max:8192'],
-        'variables.*.build_arg' => ['sometimes', 'boolean'],
-        'variables.*.masked' => ['sometimes', 'boolean'],
-    ];
+    private static function rules(): array
+    {
+        return [
+            'variables' => ['present', 'array'],
+            'variables.*.key' => [
+                'required', 'string', 'max:255',
+                // One implementation for both layers: the script generator
+                // enforces exactly this, so validation cannot accept a key that
+                // would later be silently dropped.
+                fn (string $attribute, mixed $value, callable $fail) => ProjectVariable::keyIsAllowed((string) $value)
+                    ? null
+                    : $fail('Each variable key must be a shell identifier and must not be a reserved name.'),
+            ],
+            'variables.*.value' => ['sometimes', 'nullable', 'string', 'max:8192'],
+            'variables.*.build_arg' => ['sometimes', 'boolean'],
+            'variables.*.masked' => ['sometimes', 'boolean'],
+        ];
+    }
 
     public function index(Request $request, Project $project): JsonResponse
     {
@@ -50,7 +64,7 @@ class ProjectVariableController extends Controller
     {
         $this->authorizeProject($request, $project);
 
-        $validated = $request->validate(self::RULES);
+        $validated = $request->validate(self::rules());
 
         $keys = array_column($validated['variables'], 'key');
         abort_if(count($keys) !== count(array_unique($keys)), 422, 'Duplicate variable keys.');

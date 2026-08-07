@@ -3,6 +3,7 @@
 namespace App\Steps;
 
 use App\Models\Deployment;
+use App\Models\ProjectVariable;
 use Illuminate\Support\Str;
 
 /**
@@ -125,7 +126,7 @@ class DockerDeployScript
         $variables = $deployment->project?->variables ?? collect();
 
         $flags = $variables
-            ->filter(fn ($variable) => $variable->build_arg)
+            ->filter(fn ($variable) => $variable->build_arg && ProjectVariable::keyIsAllowed((string) $variable->key))
             ->map(fn ($variable) => '--build-arg '.escapeshellarg($variable->key.'=').'"$'.$variable->key.'" ')
             ->implode('');
 
