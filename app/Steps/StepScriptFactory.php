@@ -3,7 +3,6 @@
 namespace App\Steps;
 
 use App\Models\DeploymentStep;
-use App\Models\ProjectVariable;
 use App\Support\StepType;
 use InvalidArgumentException;
 
@@ -25,42 +24,16 @@ class StepScriptFactory
             default => throw new InvalidArgumentException("Unknown step type [{$step->type}]."),
         };
 
-        return self::withProjectVariables($step, $script);
-    }
-
-    /**
-     * Prefix the project's variables as exports, so every step type sees them:
-     * a script step, the app's own deploy/build.sh, and `docker compose up`
-     * (which interpolates them into the compose file) alike.
-     *
-     * Resolved at run time rather than snapshotted onto the deployment: a
-     * variable is configuration of the project, and a retry of an old
-     * deployment should use today's value, not a stale copy of a rotated one.
-     */
-    private static function withProjectVariables(DeploymentStep $step, string $script): string
-    {
-        $variables = $step->deployment?->project?->variables ?? collect();
-
-        if ($variables->isEmpty()) {
+        // The docker steps place their own exports, in two phases -- see
+        // VariableExports. Script steps are the caller's own commands, so they
+        // simply get everything.
+        if (in_array($step->type, [StepType::DOCKER_DEPLOY, StepType::DOCKER_ROLLBACK], true)) {
             return $script;
         }
 
-        // Re-checked here, not just in the controllers: the key is written into
-        // the script unquoted, so this is the boundary that decides what a
-        // deployment executes. A row that reached the table some other way (an
-        // import, a console command, a future endpoint) must not be able to
-        // smuggle `KEY=x; curl … | sh` into a root-equivalent shell, or replace
-        // PATH out from under every command in the step.
-        $exports = $variables
-            ->filter(fn ($variable) => ProjectVariable::keyIsAllowed((string) $variable->key))
-            ->map(fn ($variable) => 'export '.$variable->key.'='.escapeshellarg((string) $variable->value))
-            ->implode("\n");
+        $exports = VariableExports::all($step->deployment);
 
-        if ($exports === '') {
-            return $script;
-        }
-
-        return $exports."\n\n".$script;
+        return $exports === '' ? $script : $exports."\n".$script;
     }
 
     /**

@@ -26,9 +26,13 @@ class DockerRollbackScript
         $webLatestQ = escapeshellarg($app.'-web:latest');
         $composeFileQ = escapeshellarg($composeFile);
 
+        // A rollback retags an existing image -- nothing is built, so there is
+        // no build phase to withhold variables from.
+        $exports = VariableExports::all($deployment);
+
         return <<<BASH
         set -euo pipefail
-
+        {$exports}
         if ! docker image inspect {$imageQ} >/dev/null 2>&1; then
             echo "Image {$app}:{$sha} is no longer available (pruned). Use a rebuild rollback instead." >&2
             exit 1

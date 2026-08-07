@@ -253,14 +253,31 @@ replaces the whole list, so anything absent is deleted.
 
 | Flag | Meaning |
 |---|---|
-| `build_arg` | also passed to `docker build` as `--build-arg`. Required for `VITE_*`, because Vite inlines those *during* the image build and never sees an exported shell variable. Opt-in, because build args are recorded in the image's `docker history` — right for values that ship in the client bundle, wrong for a token. |
+| `build_arg` | the variable exists **during the image build** and is passed to `docker build` as `--build-arg`. Required for `VITE_*`, because Vite inlines those *during* the build and never sees a shell variable exported afterwards. Opt-in, because build args are recorded in the image's `docker history` — right for values that ship in the client bundle, wrong for a token. |
 | `masked` (default) | the value is replaced with `[masked]` in stored deployment output and in failure notifications. Values shorter than 5 characters are not masked, as that would shred unrelated output. |
 
-Two things worth knowing: a repository with its own `deploy/build.sh` controls
-its `docker build` invocation, so the manager cannot add `--build-arg` there —
-have the script forward what it needs (the variables are exported, so
-`--build-arg VITE_X="$VITE_X"` works). And variables are read at deploy time,
-not snapshotted, so retrying an old deployment uses today's values.
+`build_arg` is a boundary, not a hint. In a Docker deploy step, flagged
+variables are exported before the build and everything else only afterwards, in
+time for `docker compose up` — so an unflagged variable cannot reach the image
+build even through the repository's own `deploy/build.sh`, which runs in that
+same shell. A build script that needs a value must therefore have it flagged,
+and then forwards it itself (`--build-arg VITE_X="$VITE_X"`), since the manager
+cannot add arguments to a `docker build` it does not issue.
+
+Variables are read at deploy time, not snapshotted, so retrying an old
+deployment uses today's values.
+
+**What this protects, and what it doesn't.** Values are encrypted at rest with
+`APP_KEY`, never returned by the API, and replaced with `[masked]` in stored
+output — including across chunk boundaries in streamed logs. They are *not*
+hidden from the deployment itself: anything a step runs can read them, a
+`build_arg` value is public in `docker history`, and a value under 5 characters
+is not masked (masking it would shred unrelated output). Locally the script runs
+from a private file rather than an argument, so values stay out of the host's
+process list; on an **SSH target the script is sent as the SSH command**, so it
+is visible in the remote process list while the step runs. Keys that would
+redirect the deployment itself — `PATH`, `LD_PRELOAD`, `DOCKER_HOST` and
+similar — are refused.
 
 ### Branch filtering and other fields
 

@@ -22,6 +22,11 @@ class SecretMasker
     private const MIN_LENGTH = 5;
 
     /**
+     * Trailing bytes of the stream that could still be the start of a value.
+     */
+    private string $carry = '';
+
+    /**
      * @param  array<int, string>  $values
      */
     public function __construct(private array $values = []) {}
@@ -59,5 +64,53 @@ class SecretMasker
         }
 
         return str_replace($this->values, '[masked]', $text);
+    }
+
+    /**
+     * Mask a chunk of a stream, holding back the tail that could still turn out
+     * to be the start of a value.
+     *
+     * Output arrives in arbitrary chunks, so a secret can straddle two of them
+     * and would slip past a per-chunk replace. Enough trailing bytes to cover
+     * the longest value are carried over to the next call, and released by
+     * flush() when the stream ends.
+     */
+    public function maskChunk(string $chunk): string
+    {
+        if ($this->values === []) {
+            return $chunk;
+        }
+
+        // Mask the combined buffer BEFORE deciding what to release: a value
+        // straddling the boundary is only whole here, and masking just the
+        // part about to be emitted would never see it.
+        $pending = $this->mask($this->carry.$chunk);
+        $hold = $this->longestValue() - 1;
+
+        if ($hold < 1 || strlen($pending) <= $hold) {
+            $this->carry = $pending;
+
+            return '';
+        }
+
+        $this->carry = substr($pending, -$hold);
+
+        return substr($pending, 0, -$hold);
+    }
+
+    /**
+     * Release whatever the stream ended on.
+     */
+    public function flush(): string
+    {
+        $remaining = $this->carry;
+        $this->carry = '';
+
+        return $remaining === '' ? '' : $this->mask($remaining);
+    }
+
+    private function longestValue(): int
+    {
+        return $this->values === [] ? 0 : max(array_map('strlen', $this->values));
     }
 }

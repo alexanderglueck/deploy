@@ -73,10 +73,16 @@ class DockerDeployScript
 
         $checkout = self::checkoutCommands($deployment, $config, $cloneUrlQ);
 
+        // Only build_arg variables exist while the image is built; the rest
+        // arrive after it, so an unflagged variable cannot reach the build even
+        // through the repository's own build script.
+        $buildExports = VariableExports::forBuild($deployment);
+        $runtimeExports = VariableExports::forRuntime($deployment);
+
         return <<<BASH
         set -euo pipefail
         export GIT_TERMINAL_PROMPT=0
-
+        {$buildExports}
         BUILD_DIR="\$(mktemp -d /tmp/deploy-build-XXXXXX)"
         cleanup() { rm -rf "\$BUILD_DIR"; }
         trap cleanup EXIT
@@ -101,6 +107,7 @@ class DockerDeployScript
             docker build {$buildArgs}-f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .
         fi
 
+        {$runtimeExports}
         COMPOSE_FILE={$composeFileQ}
         echo "Starting {$app} via \$COMPOSE_FILE..."
         docker compose -f "\$COMPOSE_FILE" up -d

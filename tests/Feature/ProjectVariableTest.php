@@ -99,6 +99,31 @@ class ProjectVariableTest extends TestCase
     }
 
     #[Test]
+    public function an_unflagged_variable_is_not_visible_while_the_image_is_built()
+    {
+        $deployment = $this->deploymentWith([
+            'VITE_PUSHER_APP_KEY' => ['value' => 'pk_live_abc', 'build_arg' => true],
+            'DB_PASSWORD' => ['value' => 'not-for-the-image'],
+        ]);
+
+        $script = StepScriptFactory::scriptFor($this->step($deployment, StepType::DOCKER_DEPLOY));
+
+        $buildStarts = strpos($script, 'Building image');
+        $composeStarts = strpos($script, 'docker compose -f');
+        $buildArgExport = strpos($script, 'export VITE_PUSHER_APP_KEY=');
+        $runtimeExport = strpos($script, 'export DB_PASSWORD=');
+
+        // The flag is a boundary, not a hint: the build phase -- including the
+        // repository's own deploy/build.sh, which runs in this same shell --
+        // only ever sees the variables that opted in.
+        $this->assertNotFalse($buildArgExport);
+        $this->assertLessThan($buildStarts, $buildArgExport, 'build_arg variable must be exported before the build');
+        $this->assertNotFalse($runtimeExport);
+        $this->assertGreaterThan($buildStarts, $runtimeExport, 'unflagged variable must not exist during the build');
+        $this->assertLessThan($composeStarts, $runtimeExport, 'unflagged variable must be exported before compose up');
+    }
+
+    #[Test]
     public function the_masker_replaces_values_in_output()
     {
         $deployment = $this->deploymentWith([
@@ -119,6 +144,38 @@ class ProjectVariableTest extends TestCase
         $this->assertSame('at https://example.com', $masker->mask('at https://example.com'));
         // Too short to mask without shredding unrelated output.
         $this->assertSame('ab cab', $masker->mask('ab cab'));
+    }
+
+    #[Test]
+    public function a_value_split_across_two_output_chunks_is_still_masked()
+    {
+        $deployment = $this->deploymentWith(['SECRET' => ['value' => 'super-secret-token']]);
+        $masker = SecretMasker::for($deployment->project->variables);
+
+        // Output arrives in arbitrary chunks; the value straddles the boundary.
+        $out = $masker->maskChunk('token is super-sec');
+        $out .= $masker->maskChunk("ret-token, done\n");
+        $out .= $masker->flush();
+
+        $this->assertSame("token is [masked], done\n", $out);
+        $this->assertStringNotContainsString('super-secret-token', $out);
+    }
+
+    #[Test]
+    public function streaming_output_without_secrets_survives_intact()
+    {
+        $deployment = $this->deploymentWith(['SECRET' => ['value' => 'super-secret-token']]);
+        $masker = SecretMasker::for($deployment->project->variables);
+
+        // Nothing may be swallowed by the hold-back buffer.
+        $chunks = ["Step 1 of 3\n", "building…\n", "done\n"];
+        $out = '';
+        foreach ($chunks as $chunk) {
+            $out .= $masker->maskChunk($chunk);
+        }
+        $out .= $masker->flush();
+
+        $this->assertSame(implode('', $chunks), $out);
     }
 
     #[Test]

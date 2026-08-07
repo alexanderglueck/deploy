@@ -200,7 +200,18 @@ class ProcessDeployments implements ShouldQueue
             try {
                 $script = StepScriptFactory::scriptFor($step);
 
-                $result = $executor->run($script, fn (string $chunk) => $step->appendOutput($masker->mask($chunk)));
+                $result = $executor->run($script, function (string $chunk) use ($step, $masker) {
+                    // Streamed, so a value split across two chunks is still caught.
+                    $safe = $masker->maskChunk($chunk);
+
+                    if ($safe !== '') {
+                        $step->appendOutput($safe);
+                    }
+                });
+
+                if ($tail = $masker->flush()) {
+                    $step->appendOutput($tail);
+                }
             } catch (Throwable $e) {
                 $step->appendOutput($masker->mask('ERROR: '.$e->getMessage()."\n"));
                 $step->update([
