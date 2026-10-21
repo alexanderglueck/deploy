@@ -94,14 +94,16 @@ class DockerDeployScript
         if [ -x deploy/build.sh ]; then
             ./deploy/build.sh {$appQ}
         elif [ -f Dockerfile.dist ]; then
-            docker build {$targetFlag}{$buildArgs}-f Dockerfile.dist -t {$appQ}:latest{$shaTagApp} .
+            docker build --pull {$targetFlag}{$buildArgs}-f Dockerfile.dist -t {$appQ}:latest{$shaTagApp} .
         elif [ -f Dockerfile ]; then
-            docker build {$targetFlag}{$buildArgs}-t {$appQ}:latest{$shaTagApp} .
+            docker build --pull {$targetFlag}{$buildArgs}-t {$appQ}:latest{$shaTagApp} .
         else
             echo "No deploy/build.sh, Dockerfile.dist or Dockerfile found in {$repository}." >&2
             exit 1
         fi
 
+        # No --pull here: the web image builds FROM the app image just built,
+        # which exists only locally, so a forced pull of it would fail.
         if [ -f docker/nginx.Dockerfile ]; then
             echo "Building web image {$app}-web..."
             docker build {$buildArgs}-f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .

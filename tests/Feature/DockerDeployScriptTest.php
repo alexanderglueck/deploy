@@ -40,6 +40,11 @@ class DockerDeployScriptTest extends TestCase
         // Build fallback order.
         $this->assertStringContainsString('deploy/build.sh', $script);
         $this->assertStringContainsString('Dockerfile.dist', $script);
+        // Fresh base images: a cached floating tag must not outlive a security release.
+        $this->assertStringContainsString('docker build --pull -f Dockerfile.dist', $script);
+        $this->assertStringContainsString('docker build --pull -t', $script);
+        // The web image builds FROM the local app image, so it must not force a pull.
+        $this->assertStringNotContainsString('docker build --pull -f docker/nginx.Dockerfile', $script);
         // Companion web image convention.
         $this->assertStringContainsString('docker/nginx.Dockerfile', $script);
         $this->assertStringContainsString("-t 'my-app'-web:latest", $script);
