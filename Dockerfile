@@ -87,7 +87,7 @@ RUN composer install --optimize-autoloader --no-interaction
 # Runs as root on purpose: the web container binds :80, and the worker needs
 # the host's docker socket (root-equivalent by definition). Deployed apps run
 # in their own containers; put the UI behind Cloudflare Access or similar.
-FROM dunglas/frankenphp:1-php8.5.12 AS production
+FROM dunglas/frankenphp:1-php8.5 AS production
 WORKDIR /app
 
 RUN install-php-extensions \
