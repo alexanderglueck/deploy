@@ -13,7 +13,7 @@
 # =============================================================================
 
 # ---- Composer binary --------------------------------------------------------
-FROM composer:2.9 AS composer-bin
+FROM composer:2.11 AS composer-bin
 
 # ---- Front-end assets -------------------------------------------------------
 # A glibc image is used (not alpine) so the prebuilt lightningcss / tailwind
