@@ -48,7 +48,11 @@ class DockerRollbackScript
 
         COMPOSE_FILE={$composeFileQ}
         echo "Restarting {$app} via \$COMPOSE_FILE..."
-        docker compose -f "\$COMPOSE_FILE" up -d
+        # --force-recreate: Compose 5.7 sometimes keeps a container on its old
+        # image after the local tag moved to a new build (seen 2026-11-20 on
+        # two -web containers). Recreating every service also restarts nginx
+        # together with php-fpm, so nginx never keeps a stale upstream IP.
+        docker compose -f "\$COMPOSE_FILE" up -d --force-recreate
 
         echo "Rolled back {$app} to {$sha}."
         BASH;

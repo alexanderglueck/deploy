@@ -151,7 +151,7 @@ class DockerDeployScriptTest extends TestCase
 
         // Single-quoted by escapeshellarg on the assignment...
         $this->assertStringContainsString("COMPOSE_FILE='\$(id > /tmp/pwned)'", $script);
-        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d', $script);
+        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d --force-recreate', $script);
         // ...and never interpolated raw into a double-quoted line, which is
         // where bash would run the command substitution.
         $this->assertStringNotContainsString('via $(id', $script);

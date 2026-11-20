@@ -33,7 +33,7 @@ class DockerRollbackScriptTest extends TestCase
         // The path is bound to a shell variable (set from the single-quoted
         // literal) and referenced by name, so it is never re-evaluated.
         $this->assertStringContainsString("COMPOSE_FILE='/srv/server-config/apps/my-app/compose.yml'", $script);
-        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d', $script);
+        $this->assertStringContainsString('docker compose -f "$COMPOSE_FILE" up -d --force-recreate', $script);
     }
 
     #[Test]
