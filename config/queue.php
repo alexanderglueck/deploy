@@ -38,7 +38,9 @@ return [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
-            'retry_after' => 90,
+            // Longer than the longest deployment (DEPLOY_TIMEOUT plus the
+            // job's margin), or a second worker takes a running job again.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', (int) env('DEPLOY_TIMEOUT', 3600) + 120),
             'after_commit' => false,
         ],
 

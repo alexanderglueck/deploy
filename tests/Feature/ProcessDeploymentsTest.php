@@ -183,6 +183,34 @@ class ProcessDeploymentsTest extends TestCase
     }
 
     #[Test]
+    public function a_deployment_runs_only_once_when_its_job_is_delivered_twice()
+    {
+        $executor = ExecutorFactory::fake(exitCode: 0, output: "one\n");
+
+        $deployment = $this->deployment();
+
+        ProcessDeployments::dispatchSync($deployment);
+        $processedAt = $deployment->fresh()->processed_at;
+
+        $this->travel(5)->minutes();
+        ProcessDeployments::dispatchSync($deployment);
+
+        $deployment->refresh();
+        $this->assertSame('deployed', $deployment->status);
+        $this->assertCount(1, $executor->scripts);
+        $this->assertTrue($processedAt->equalTo($deployment->processed_at));
+    }
+
+    #[Test]
+    public function the_queue_does_not_hand_out_a_running_deployment_again()
+    {
+        $this->assertGreaterThan(
+            (int) config('deploy.timeout') + 30,
+            config('queue.connections.database.retry_after')
+        );
+    }
+
+    #[Test]
     public function a_canceled_deployment_is_not_executed()
     {
         $executor = ExecutorFactory::fake();

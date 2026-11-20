@@ -95,6 +95,14 @@ class ProcessDeployments implements ShouldQueue
             return;
         }
 
+        // A deployment runs at most once. If the queue hands out the same job
+        // again (for example, a second worker after retry_after), the first
+        // run already set processed_at. A second run would rebuild and re-tag
+        // the image after the containers started, and leave them on the old one.
+        if (! $this->deployment->isPending()) {
+            return;
+        }
+
         // Set processed_at
         $this->deployment->update([
             'processed_at' => Carbon::now(),
