@@ -48,6 +48,8 @@ class DockerDeployScriptTest extends TestCase
         // Companion web image convention.
         $this->assertStringContainsString('docker/nginx.Dockerfile', $script);
         $this->assertStringContainsString("-t 'my-app'-web:latest", $script);
+        // ...but its external base images are pulled one by one.
+        $this->assertStringContainsString(DockerDeployScript::pullBaseImagesCommand('docker/nginx.Dockerfile'), $script);
         // Temp dir hygiene.
         $this->assertStringContainsString('mktemp -d', $script);
         $this->assertStringContainsString('trap cleanup EXIT', $script);
@@ -167,5 +169,45 @@ class DockerDeployScriptTest extends TestCase
 
         $this->assertStringNotContainsString('--branch', $script);
         $this->assertStringContainsString("-t 'my-app':latest .", $script);
+    }
+
+    #[Test]
+    public function it_pulls_only_the_external_base_images_of_the_web_dockerfile()
+    {
+        $dir = sys_get_temp_dir().'/deploy-pull-test-'.bin2hex(random_bytes(4));
+        mkdir($dir.'/bin', 0777, true);
+
+        // CRLF on purpose: several app repos check their Dockerfiles out that way.
+        file_put_contents($dir.'/web.Dockerfile', implode("\r\n", [
+            'ARG APP_IMAGE=my-app:latest',
+            'FROM ${APP_IMAGE} AS app',
+            'FROM --platform=linux/amd64 nginx:1.31-alpine AS web',
+            'from busybox:1.37',
+            'FROM web',
+            'COPY --from=app /app/public /usr/share/nginx/html',
+            '',
+        ]));
+
+        // A fake docker that records what it was asked to pull.
+        file_put_contents($dir.'/bin/docker', "#!/bin/sh\necho \"\$*\" >> \"$dir/calls\"\n");
+        chmod($dir.'/bin/docker', 0755);
+
+        $script = "set -euo pipefail\ncd ".escapeshellarg($dir)."\n"
+            .DockerDeployScript::pullBaseImagesCommand('web.Dockerfile');
+
+        $process = proc_open(['bash', '-c', $script], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, [
+            'PATH' => $dir.'/bin:'.getenv('PATH'),
+        ]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        $exit = proc_close($process);
+
+        $this->assertSame(0, $exit, $stdout.$stderr);
+        $this->assertSame(
+            ['pull -q busybox:1.37', 'pull -q nginx:1.31-alpine'],
+            file($dir.'/calls', FILE_IGNORE_NEW_LINES)
+        );
+
+        exec('rm -rf '.escapeshellarg($dir));
     }
 }

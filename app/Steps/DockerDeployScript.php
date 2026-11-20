@@ -78,6 +78,7 @@ class DockerDeployScript
         // through the repository's own build script.
         $buildExports = VariableExports::forBuild($deployment);
         $runtimeExports = VariableExports::forRuntime($deployment);
+        $pullWebBases = self::pullBaseImagesCommand('docker/nginx.Dockerfile');
 
         return <<<BASH
         set -euo pipefail
@@ -103,8 +104,11 @@ class DockerDeployScript
         fi
 
         # No --pull here: the web image builds FROM the app image just built,
-        # which exists only locally, so a forced pull of it would fail.
+        # which exists only locally, so a forced pull of it would fail. The
+        # external base images (nginx) are pulled one by one instead, so that a
+        # floating tag still picks up security releases.
         if [ -f docker/nginx.Dockerfile ]; then
+            {$pullWebBases}
             echo "Building web image {$app}-web..."
             docker build {$buildArgs}-f docker/nginx.Dockerfile -t {$appQ}-web:latest{$shaTagWeb} .
         fi
@@ -116,6 +120,31 @@ class DockerDeployScript
 
         echo "Deployed {$app}."
         BASH;
+    }
+
+    /**
+     * Shell that pulls every external base image of a Dockerfile.
+     *
+     * It skips a FROM that uses a build argument (the local app image) or
+     * names an earlier stage, because neither exists in a registry. A failed
+     * pull only warns: the build then uses the local copy, as before.
+     */
+    public static function pullBaseImagesCommand(string $dockerfile): string
+    {
+        $file = escapeshellarg($dockerfile);
+
+        $command = <<<BASH
+        stages="\$(tr -d '\\r' < {$file} | awk 'toupper(\$1) == "FROM" && toupper(\$(NF-1)) == "AS" { print \$NF }')"
+            for image in \$(tr -d '\\r' < {$file} | awk 'toupper(\$1) == "FROM" { for (i = 2; i <= NF; i++) if (\$i !~ /^--/) { print \$i; break } }' | grep -v '[\$]' | sort -u); do
+                if printf '%s\\n' "\$stages" | grep -qxF "\$image"; then continue; fi
+                echo "Pulling base image \$image..."
+                docker pull -q "\$image" >/dev/null || echo "Could not pull \$image, building with the local copy." >&2
+            done
+        BASH;
+
+        // A CRLF checkout of this file would put \r into the shell, and bash
+        // reads "do\r" as a syntax error.
+        return str_replace("\r", '', $command);
     }
 
     /**
