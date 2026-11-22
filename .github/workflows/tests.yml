@@ -15,8 +15,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
-          extensions: bcmath, gd, intl, pdo_mysql, pdo_sqlite, zip
+          php-version: '8.6'
+          extensions: bcmath, gd, intl, mbstring, pdo_mysql, pdo_sqlite, zip
           coverage: none
 
       - name: Install Composer dependencies

@@ -27,17 +27,19 @@ COPY resources ./resources
 RUN npm run build
 
 # ---- Shared PHP-FPM runtime -------------------------------------------------
-FROM php:8.5-fpm AS base
+FROM php:8.6-fpm AS base
 WORKDIR /app
 
 # Single cached download, already executable (no chmod/sync step needed).
 # Pinned: a `latest` URL re-resolves on every build and busts the layer cache
 # (and everything after it) whenever upstream releases.
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.11.12/install-php-extensions /usr/local/bin/
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/download/2.13.2/install-php-extensions /usr/local/bin/
+# PHP 8.6 images no longer bundle mbstring (Laravel needs it), so it is listed.
 RUN install-php-extensions \
     bcmath \
     gd \
     intl \
+    mbstring \
     opcache \
     pcntl \
     pdo_mysql \
@@ -87,13 +89,15 @@ RUN composer install --optimize-autoloader --no-interaction
 # Runs as root on purpose: the web container binds :80, and the worker needs
 # the host's docker socket (root-equivalent by definition). Deployed apps run
 # in their own containers; put the UI behind Cloudflare Access or similar.
-FROM dunglas/frankenphp:1-php8.5 AS production
+FROM dunglas/frankenphp:1.14-php8.6 AS production
 WORKDIR /app
 
+# PHP 8.6 images no longer bundle mbstring (Laravel needs it), so it is listed.
 RUN install-php-extensions \
     bcmath \
     gd \
     intl \
+    mbstring \
     opcache \
     pcntl \
     pdo_mysql \
@@ -129,7 +133,8 @@ CMD ["--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 # Source code, vendor and node_modules are bind-mounted from the host
 # (see docker-compose.yml), so nothing application-specific is baked in here.
 FROM base AS dev
-RUN install-php-extensions xdebug pcov
+# xdebug and pcov have no PHP 8.6 release yet; bring them back
+# (RUN install-php-extensions xdebug pcov) when PECL has 8.6 releases.
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 USER dockeruser
 CMD ["php-fpm"]
